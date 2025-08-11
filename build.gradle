@@ -10,11 +10,17 @@ repositories {
 }
 
 dependencies {
-    api "net.java.dev.jna:jna:5.17.0"
-    api "net.java.dev.jna:jna-platform:5.17.0"
+    api "net.java.dev.jna:jna-platform:$jnaVersion"
+    api "net.java.dev.jna:jna-platform:$jnaVersion"
 
-    testImplementation platform('org.junit:junit-bom:5.10.0')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
+    compileOnly "org.projectlombok:lombok:$lombokVersion"
+    testCompileOnly "org.projectlombok:lombok:$lombokVersion"
+
+    testImplementation "org.junit.jupiter:junit-jupiter-api:$junitVersion"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
+
+    testCompileOnly "org.projectlombok:lombok:$lombokVersion"
+    testAnnotationProcessor "org.projectlombok:lombok:$lombokVersion"
 }
 
 test {
