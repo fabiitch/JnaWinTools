@@ -115,7 +115,7 @@ public class Window64Helper {
     public boolean setWindowUnDecorated(String windowName) {
         return withWindowName(windowName,
                 "setWindowUnDecorated",
-                Window64Utils::setWindowDecorated,
+                Window64Utils::setWindowUnDecorated,
                 WinApiResult::failure)
                 .isSuccess();
     }
