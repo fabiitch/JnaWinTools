@@ -1,10 +1,10 @@
-package com.nz.jnawintools.log;
+package com.nz.jnawintools.log.utils;
 
-public class JwToolsLoggerFormat {
-    private JwToolsLoggerFormat() {
+public class JWTLogFormat {
+    private JWTLogFormat() {
     }
 
-    static String format(String msg, Object... params) {
+    public static String format(String msg, Object... params) {
         for (Object param : params) {
             String safe = java.util.regex.Matcher.quoteReplacement(
                     param != null ? param.toString() : "null"

@@ -1,8 +1,8 @@
 package com.nz.jnawintools.log;
 
-import static com.nz.jnawintools.log.JwToolsLoggerFormat.format;
+import static com.nz.jnawintools.log.utils.JWTLogFormat.format;
 
-public interface JnaWinToolsLogger {
+public interface JWTLogger {
 
     default void debug(String message, Object... params) {
         debug(format(message, params));

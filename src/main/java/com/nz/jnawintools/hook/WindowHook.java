@@ -1,48 +1,56 @@
 package com.nz.jnawintools.hook;
 
 import com.nz.jnawintools.hook.events.AbstractEventDispatcher;
-import com.nz.jnawintools.hook.list.WindowFocusHook;
-import com.nz.jnawintools.hook.list.WindowLifecycleHook;
-import com.nz.jnawintools.hook.list.WindowMoveHook;
-import com.nz.jnawintools.log.JnaWinToolsLogger;
+import com.nz.jnawintools.hook.list.*;
+import com.nz.jnawintools.hook.window.WindowChecker;
+import com.nz.jnawintools.log.JWTLogger;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 
 public class WindowHook {
 
-    private final JnaWinToolsLogger logger;
+    private final JWTLogger logger;
     private final AbstractEventDispatcher<WindowEventAction> messageDispatcher;
     private final WindowFocusHook focusHook;
     private final WindowLifecycleHook lifecycleHook;
-//    private final WindowMinMaxHook minMaxHook;
     private final WindowMoveHook moveHook;
+    //    private final WindowMinMaxHook minMaxHook;
 //    private final WindowVisibilityHook visibilityHook;
-    private final String windowTrack;
+    private final WindowChecker windowToTrackChecker;
 
-    public WindowHook(String windowTrack,
+    private final List<BaseWindowHook> hooks = new ArrayList<>();
+
+    public WindowHook(WindowChecker windowToTrackChecker,
                       AbstractEventDispatcher<WindowEventAction> abstractEventDispatcher,
-                      JnaWinToolsLogger logger) {
+                      JWTLogger logger) {
         this.logger = logger;
         this.messageDispatcher = abstractEventDispatcher;
-        this.focusHook = new WindowFocusHook(windowTrack, messageDispatcher, logger);
-        this.moveHook = new WindowMoveHook(windowTrack, messageDispatcher, logger);
-//        this.minMaxHook = new WindowMinMaxHook(windowTrack, messageDispatcher, logger);
-        this.lifecycleHook = new WindowLifecycleHook(windowTrack, messageDispatcher, logger);
-//        this.visibilityHook = new WindowVisibilityHook(windowTrack, messageDispatcher, logger);
-        this.logger.log("Create with target window = {}", windowTrack);
-        this.windowTrack = windowTrack;
+        this.focusHook = new WindowFocusHook(windowToTrackChecker, messageDispatcher, logger);
+        this.moveHook = new WindowMoveHook(windowToTrackChecker, messageDispatcher, logger);
+//        this.minMaxHook = new WindowMinMaxHook(windowToTrackChecker, messageDispatcher, logger);
+        this.lifecycleHook = new WindowLifecycleHook(windowToTrackChecker, messageDispatcher, logger);
+//        this.visibilityHook = new WindowVisibilityHook(windowToTrackChecker, messageDispatcher, logger);
+        this.logger.log("Create with target window = {}", windowToTrackChecker.getWindowName());
+        this.windowToTrackChecker = windowToTrackChecker;
     }
 
     public void startHook(){
+        focusHook.start();
+        moveHook.start();
+        lifecycleHook.start();
+//        minMaxHook.start();
     }
 
     public void dispose() {
-        focusHook.dispose();
-        moveHook.dispose();
+        focusHook.stop();
+        moveHook.stop();
+//        minMaxHook.stop();
 //        minMaxHook.dispose();
 //        visibilityHook.dispose();
-        lifecycleHook.dispose();
-        this.logger.log("Disposed all hooks with target window = {}", windowTrack);
+        lifecycleHook.stop();
+        this.logger.log("Disposed all hooks with target window = {}", windowToTrackChecker.getWindowName());
     }
 
     public void addListener(Consumer<WindowEventAction> listener) {
