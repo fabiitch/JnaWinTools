@@ -1,6 +1,8 @@
-package com.nz.jnawintools.log;
+package com.nz.jnawintools.log.impl;
 
-public class MuttedJnaWinToolsLogger implements JnaWinToolsLogger {
+import com.nz.jnawintools.log.JWTLogger;
+
+public class JWTMuttedLogger implements JWTLogger {
     @Override
     public void error(String message) {
 

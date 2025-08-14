@@ -2,52 +2,118 @@ package com.nz.jnawintools.hook.list;
 
 import com.nz.jnawintools.hook.WindowEventAction;
 import com.nz.jnawintools.hook.events.AbstractEventDispatcher;
-import com.nz.jnawintools.log.JnaWinToolsLogger;
+import com.nz.jnawintools.hook.window.WindowChecker;
+import com.nz.jnawintools.log.JWTLogger;
 import com.nz.jnawintools.log.WindowHookLogger;
 import com.nz.jnawintools.window.Window64Helper;
-import com.sun.jna.platform.win32.User32;
-import com.sun.jna.platform.win32.WinNT;
+import com.sun.jna.Pointer;
+import com.sun.jna.platform.win32.*;
+
+import static com.nz.jnawintools.hook.cst.WinEventConstants.WINEVENT_OUTOFCONTEXT;
+import static com.nz.jnawintools.hook.cst.WinEventConstants.WINEVENT_SKIPOWNPROCESS;
 
 public abstract class BaseWindowHook {
 
     protected final WindowHookLogger logger;
-    private WinNT.HANDLE hook;
-    protected final String WINDOW_TRACKED;
+    protected final WindowChecker windowToTrackChecker;
+
     protected final Window64Helper window64Helper;
-    private final AbstractEventDispatcher<WindowEventAction> messageDispatcher;
+    private final AbstractEventDispatcher<WindowEventAction> dispatcher;
 
-    public BaseWindowHook(String WINDOW_TRACKED,
-                          AbstractEventDispatcher<WindowEventAction> messageDispatcher,
-                          JnaWinToolsLogger logger) {
-        this.WINDOW_TRACKED = WINDOW_TRACKED;
-        this.messageDispatcher = messageDispatcher;
-        this.logger = new WindowHookLogger(name() + "-" + WINDOW_TRACKED, logger);
+    private WinUser.WinEventProc eventProc;
+    private WinNT.HANDLE hookHandle;
+    private volatile boolean started = false;
+
+    public BaseWindowHook(WindowChecker windowToTrackChecker,
+                           AbstractEventDispatcher<WindowEventAction> messageDispatcher,
+                           JWTLogger logger) {
+        this.windowToTrackChecker = windowToTrackChecker;
+        this.dispatcher = messageDispatcher;
+        this.logger = new WindowHookLogger(name() + "-" + windowToTrackChecker, logger);
         this.window64Helper = new Window64Helper(logger);
-        this.hook = buildHook();
     }
 
-    protected void dispatch(WindowEventAction action) {
-        logger.debug("Dispatch action={}", action);
-        messageDispatcher.dispatch(action);
-    }
+    protected abstract void onEvent(WinDef.DWORD event,
+                                    WinDef.HWND hwnd,
+                                    WinDef.LONG idObject,
+                                    WinDef.LONG idChild,
+                                    WinDef.DWORD dwEventThread,
+                                    WinDef.DWORD dwmsEventTime);
 
     protected abstract String name();
 
-    public void startHook() {
-        this.buildHook();
-        if (hook != null) {
-            this.logger.log("Hook activated 🎯🎯", WINDOW_TRACKED);
-        } else {
-            this.logger.error("Fail to Hook window ❌❌", WINDOW_TRACKED);
+    protected abstract int eventMin();
+
+    protected abstract int eventMax();
+
+    protected int hookFlags() {
+        return WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS;
+    }
+
+    protected final void dispatch(WindowEventAction action) {
+        try {
+            dispatcher.dispatch(action);
+        } catch (Throwable t) {
+            logger.error("[{}] dispatch failed: {}", name(), t.getMessage());
         }
     }
 
-    protected abstract WinNT.HANDLE buildHook();
-
-    public void dispose() {
-        if (hook != null) {
-            User32.INSTANCE.UnhookWinEvent(hook);
-            logger.log("End hook app {}", WINDOW_TRACKED);
+    /**
+     * Démarre le hook (idempotent).
+     */
+    public synchronized void start() {
+        if (started) {
+            logger.debug("[{}] already started", name());
+            return;
         }
+        logger.debug("[{}] starting...", name());
+
+        // Crée le callback et le garde en champ (réf forte)
+        eventProc = (hWinEventHook, event, hwnd, idObject, idChild, dwEventThread, dwmsEventTime) -> {
+            try {
+                onEvent(event, hwnd, idObject, idChild, dwEventThread, dwmsEventTime);
+            } catch (Throwable t) {
+                logger.error("[{}] onEvent error: {}", name(), t.getMessage());
+            }
+        };
+
+        hookHandle = User32.INSTANCE.SetWinEventHook(
+                eventMin(),
+                eventMax(),
+                null,
+                eventProc,
+                0, 0,
+                hookFlags()
+        );
+
+        if (hookHandle == null) {
+            int err = Kernel32.INSTANCE.GetLastError();
+            eventProc = null; // rollback
+            logger.error("[{}] SetWinEventHook failed. GetLastError={}", name(), err);
+            throw new IllegalStateException("SetWinEventHook failed: " + err);
+        }
+
+        logger.debug("[{}] hook installed handle=0x{} (min={}, max={}, flags=0x{})",
+                name(),
+                Long.toHexString(Pointer.nativeValue(hookHandle.getPointer())),
+                eventMin(), eventMax(), Integer.toHexString(hookFlags()));
+
+        started = true;
+    }
+
+    public synchronized void stop() {
+        if (!started) {
+            logger.debug("[{}] already stopped", name());
+            return;
+        }
+        logger.debug("[{}] stopping...", name());
+
+        if (hookHandle != null) {
+            boolean ok = User32.INSTANCE.UnhookWinEvent(hookHandle);
+            logger.debug("[{}] UnhookWinEvent -> {}", name(), ok);
+            hookHandle = null;
+        }
+        eventProc = null;
+        started = false;
     }
 }

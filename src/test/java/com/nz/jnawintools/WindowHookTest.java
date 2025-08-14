@@ -3,23 +3,21 @@ package com.nz.jnawintools;
 import com.nz.jnawintools.hook.WindowEventAction;
 import com.nz.jnawintools.hook.WindowHook;
 import com.nz.jnawintools.hook.events.SyncEventDispatcher;
-import com.nz.jnawintools.log.MuttedJnaWinToolsLogger;
+import com.nz.jnawintools.hook.window.WindowTitleEqualsChecker;
+import com.nz.jnawintools.log.impl.JWTMuttedLogger;
 import com.sun.jna.platform.win32.User32;
 import com.sun.jna.platform.win32.WinUser;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.function.Consumer;
 
-@Disabled("testScreen")
 public class WindowHookTest {
-    private static final int PM_REMOVE = 0x0001;
 
     @Test
     public void testHook() throws InterruptedException {
-        WindowHook windowHook = new WindowHook("Calculatrice",
+        WindowHook windowHook = new WindowHook(WindowTitleEqualsChecker.get("Calculatrice"),
             new SyncEventDispatcher<>(),
-            new MuttedJnaWinToolsLogger());
+            new JWTMuttedLogger());
 
         windowHook.addListener(new Consumer<WindowEventAction>() {
             int inc = 0;
@@ -31,6 +29,7 @@ public class WindowHookTest {
             }
         });
         System.out.println("HOOKED");
+        windowHook.startHook();
 
         // Boucle de messages Windows
         WinUser.MSG msg = new WinUser.MSG();

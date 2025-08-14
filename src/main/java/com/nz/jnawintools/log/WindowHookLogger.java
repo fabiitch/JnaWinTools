@@ -1,10 +1,10 @@
 package com.nz.jnawintools.log;
 
-public class WindowHookLogger implements JnaWinToolsLogger {
+public class WindowHookLogger implements JWTLogger {
     private String windowName;
-    private JnaWinToolsLogger logger;
+    private JWTLogger logger;
 
-    public WindowHookLogger(String windowName, JnaWinToolsLogger logger) {
+    public WindowHookLogger(String windowName, JWTLogger logger) {
         this.windowName = "[" + windowName + "]";
         this.logger = logger;
     }
