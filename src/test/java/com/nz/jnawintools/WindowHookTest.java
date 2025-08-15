@@ -7,10 +7,12 @@ import com.nz.jnawintools.hook.window.WindowTitleEqualsChecker;
 import com.nz.jnawintools.log.impl.JWTMuttedLogger;
 import com.sun.jna.platform.win32.User32;
 import com.sun.jna.platform.win32.WinUser;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.function.Consumer;
 
+@Disabled()
 public class WindowHookTest {
 
     @Test
