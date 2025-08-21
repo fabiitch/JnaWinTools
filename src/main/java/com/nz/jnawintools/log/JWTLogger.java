@@ -11,7 +11,7 @@ public interface JWTLogger {
 
 
     default void log(String message, Object... params) {
-        error(format(message, params));
+        log(format(message, params));
     }
     void log(String message);
 
