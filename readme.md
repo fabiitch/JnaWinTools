@@ -1,7 +1,6 @@
+[![CI](https://github.com/fabien-occelli/JnaWinTools/actions/workflows/ci.yml/badge.svg)](https://github.com/fabien-occelli/JnaWinTools/actions/workflows/ci.yml)
 
-
-
-later maybe 
+later maybe
 
 https://github.com/oshi/oshi
 
