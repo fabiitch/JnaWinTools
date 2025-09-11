@@ -119,6 +119,21 @@ public class Window64Helper {
                 WinApiResult::failure)
                 .isSuccess();
     }
+    public boolean showWindow(String windowName) {
+        return withWindowName(windowName,
+                "showWindow",
+                Window64Utils::showWindow,
+                WinApiResult::failure)
+                .isSuccess();
+    }
+
+    public boolean hideWindow(String windowName) {
+        return withWindowName(windowName,
+                "hideWindow",
+                Window64Utils::hideWindow,
+                WinApiResult::failure)
+                .isSuccess();
+    }
 
     public boolean setClickThrough(String windowName) {
         return withWindowName(windowName,
@@ -195,4 +210,7 @@ public class Window64Helper {
                 "getName",
                 res -> Window64Utils.getName(hwnd)).getResult();
     }
+
+
+
 }
