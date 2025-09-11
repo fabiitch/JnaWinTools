@@ -268,6 +268,45 @@ public class Window64Utils {
         return resize(hwnd, bounds, false);
     }
 
+    public static WinApiResult showWindow(WinDef.HWND hwnd) {
+        IconicResult iconic = isIconic(hwnd);
+        if (iconic.isFailure()) {
+            return WinApiResult.failure(iconic.getErrorCode());
+        }
+        KERNEL_32.SetLastError(0);
+        boolean ok;
+        if (iconic.isIconic()) {
+            ok = USER_32.ShowWindow(hwnd, WinUser.SW_RESTORE);
+        } else {
+            ok = USER_32.ShowWindow(hwnd, WinUser.SW_SHOW);
+        }
+        if (!ok) {
+            int error = KERNEL_32.GetLastError();
+            return WinApiResult.failure(error != 0 ? error : 0x71001);
+        }
+        return WinApiResult.success();
+    }
+
+    public static WinApiResult hideWindow(WinDef.HWND hwnd) {
+        IconicResult iconic = isIconic(hwnd);
+        if (iconic.isFailure()) {
+            return WinApiResult.failure(iconic.getErrorCode());
+        }
+        boolean ok;
+        if (iconic.isIconic()) {
+            return WinApiResult.success();
+        }
+        KERNEL_32.SetLastError(0);
+        ok = USER_32.ShowWindow(hwnd, WinUser.SW_HIDE);
+        if (!ok) {
+            int error = KERNEL_32.GetLastError();
+            return WinApiResult.failure(error != 0 ? error : 0x71001);
+        }
+        return WinApiResult.success();
+    }
+
+
+
     /**
      * ------------------ AUTRES UTILS ------------------
      */
@@ -284,8 +323,8 @@ public class Window64Utils {
                 bounds.width, bounds.height,
                 flags
         );
-        int error = KERNEL_32.GetLastError();
         if (!ok) {
+            int error = KERNEL_32.GetLastError();
             return WinApiResult.failure(error != 0 ? error : 0x71000);
         }
         return WinApiResult.success();
