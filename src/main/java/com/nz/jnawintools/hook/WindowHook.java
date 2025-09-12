@@ -1,14 +1,16 @@
 package com.nz.jnawintools.hook;
 
 import com.nz.jnawintools.hook.events.AbstractEventDispatcher;
-import com.nz.jnawintools.hook.list.*;
+import com.nz.jnawintools.hook.list.BaseWindowHook;
+import com.nz.jnawintools.hook.list.WindowFocusHook;
+import com.nz.jnawintools.hook.list.WindowLifecycleHook;
+import com.nz.jnawintools.hook.list.WindowMoveHook;
 import com.nz.jnawintools.hook.window.WindowChecker;
 import com.nz.jnawintools.log.JWTLogger;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
-
 public class WindowHook {
 
     private final JWTLogger logger;
@@ -36,10 +38,10 @@ public class WindowHook {
         this.windowToTrackChecker = windowToTrackChecker;
     }
 
-    public void startHook(){
+    public void startHook() {
+        lifecycleHook.start();
         focusHook.start();
         moveHook.start();
-        lifecycleHook.start();
 //        minMaxHook.start();
     }
 
