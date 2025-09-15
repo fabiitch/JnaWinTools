@@ -4,11 +4,20 @@ import java.awt.*;
 
 public class WindowBoundsResult extends WinApiResultExtended<Rectangle>{
 
-    public WindowBoundsResult(Rectangle value) {
+    public static WindowBoundsResult success(Rectangle value) {
+        return new WindowBoundsResult(value);
+    }
+
+    public static WindowBoundsResult failure(int errorCode) {
+        return new WindowBoundsResult(errorCode);
+    }
+
+
+    protected WindowBoundsResult(Rectangle value) {
         super(value);
     }
 
-    public WindowBoundsResult(int errorCode) {
+    protected WindowBoundsResult(int errorCode) {
         super(errorCode);
     }
 }

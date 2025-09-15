@@ -306,7 +306,6 @@ public class Window64Utils {
     }
 
 
-
     /**
      * ------------------ AUTRES UTILS ------------------
      */
@@ -533,7 +532,7 @@ public class Window64Utils {
         WinUser.HMONITOR hMonitor = USER_32.MonitorFromWindow(hwnd, WinUser.MONITOR_DEFAULTTONEAREST);
         int error = KERNEL_32.GetLastError();
         if (hMonitor == null || hMonitor.getPointer() == null) {
-            return new ScreenBoundsResult(error != 0 ? error : 0x30000); // code "no monitor"
+            return ScreenBoundsResult.failure(error != 0 ? error : 0x30000); // code "no monitor"
         }
 
         // Récupérer les infos du moniteur (coords écran)
@@ -544,7 +543,7 @@ public class Window64Utils {
         WinDef.BOOL ok = User32.INSTANCE.GetMonitorInfo(hMonitor, info);
         error = KERNEL_32.GetLastError();
         if (ok == null || !ok.booleanValue()) {
-            return new ScreenBoundsResult(error != 0 ? error : 0x40000); // code "monitor info failed"
+            return ScreenBoundsResult.failure(error != 0 ? error : 0x40000); // code "monitor info failed"
         }
 
         Rectangle bounds = new Rectangle(
@@ -553,7 +552,7 @@ public class Window64Utils {
                 info.rcMonitor.right - info.rcMonitor.left,
                 info.rcMonitor.bottom - info.rcMonitor.top
         );
-        return new ScreenBoundsResult(bounds);
+        return ScreenBoundsResult.success(bounds);
     }
 
     /***
@@ -638,10 +637,10 @@ public class Window64Utils {
         int error = KERNEL_32.GetLastError();
 
         if (ok == null || !ok.booleanValue() || monitors.isEmpty()) {
-            return new WinApiScreensBounds(error != 0 ? error : 0x90000);
+            return WinApiScreensBounds.failure(error != 0 ? error : 0x90000);
         }
 
-        return new WinApiScreensBounds(monitors);
+        return WinApiScreensBounds.success(monitors);
     }
 
     public static WindowBoundsResult getWindowBounds(WinDef.HWND hwnd) {
@@ -651,31 +650,33 @@ public class Window64Utils {
         boolean ok = USER_32.GetWindowRect(hwnd, rect);
         int error = KERNEL_32.GetLastError();
         if (!ok && error != 0) {
-            return new WindowBoundsResult(error);
+            return WindowBoundsResult.failure(error);
         }
 
         int width = rect.right - rect.left;
         int height = rect.bottom - rect.top;
 
-        return new WindowBoundsResult(new Rectangle(rect.left, rect.top, width, height));
+        return WindowBoundsResult.success(new Rectangle(rect.left, rect.top, width, height));
     }
 
     public static ScreenBoundsResult getScreenBounds(int screenIndex) {
         WinApiScreensBounds screenBoundsResult = getAllScreenBounds();
 
         if (!screenBoundsResult.isSuccess()) {
-            return new ScreenBoundsResult(screenBoundsResult.getErrorCode());
+            return ScreenBoundsResult.failure(screenBoundsResult.getErrorCode());
         }
         List<Rectangle> screensBounds = screenBoundsResult.getResult();
         if (screenIndex < 0 || screenIndex >= screensBounds.size()) {
-            return new ScreenBoundsResult(0x20000); // code personnalisé : index invalide
+            return ScreenBoundsResult.failure(0x20000); // code personnalisé : index invalide
         }
-        return new ScreenBoundsResult(screensBounds.get(screenIndex));
+        return ScreenBoundsResult.success(screensBounds.get(screenIndex));
     }
 
     public static WinApiResult setWindowPosition(WinDef.HWND hwnd, int x, int y) {
         WindowBoundsResult windowBounds = getWindowBounds(hwnd);
-        if (windowBounds.isFailure()) return WinApiResult.failure(windowBounds.getErrorCode());
+        if (windowBounds.isFailure()) {
+            return WinApiResult.failure(windowBounds.getErrorCode());
+        }
         Rectangle bounds = windowBounds.getResult();
         bounds.x = x;
         bounds.y = y;
