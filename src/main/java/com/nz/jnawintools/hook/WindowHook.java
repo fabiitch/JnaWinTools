@@ -1,6 +1,7 @@
 package com.nz.jnawintools.hook;
 
-import com.nz.jnawintools.hook.events.AbstractEventDispatcher;
+import com.nz.jnawintools.hook.event.WindowEventAction;
+import com.nz.jnawintools.hook.event.dispatch.AbstractEventDispatcher;
 import com.nz.jnawintools.hook.list.BaseWindowHook;
 import com.nz.jnawintools.hook.list.WindowFocusHook;
 import com.nz.jnawintools.hook.list.WindowLifecycleHook;

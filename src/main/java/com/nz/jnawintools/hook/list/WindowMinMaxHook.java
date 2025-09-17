@@ -1,7 +1,7 @@
 package com.nz.jnawintools.hook.list;
 
-import com.nz.jnawintools.hook.WindowEventAction;
-import com.nz.jnawintools.hook.events.AbstractEventDispatcher;
+import com.nz.jnawintools.hook.event.WindowEventAction;
+import com.nz.jnawintools.hook.event.dispatch.AbstractEventDispatcher;
 import com.nz.jnawintools.hook.window.WindowChecker;
 import com.nz.jnawintools.log.JWTLogger;
 import com.sun.jna.platform.win32.WinDef;
