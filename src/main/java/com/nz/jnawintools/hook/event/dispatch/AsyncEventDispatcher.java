@@ -1,4 +1,4 @@
-package com.nz.jnawintools.hook.events;
+package com.nz.jnawintools.hook.event.dispatch;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;

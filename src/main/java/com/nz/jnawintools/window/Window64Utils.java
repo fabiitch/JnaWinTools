@@ -40,6 +40,10 @@ public class Window64Utils {
         return HwndResult.failure(KERNEL_32.GetLastError());
     }
 
+    public static WinDef.HWND getHwnd(long windowHandle) {
+        return new WinDef.HWND(Pointer.createConstant(windowHandle));
+    }
+
     public static WinApiResultExtended<String> getName(WinDef.HWND hwnd) {
         char[] buffer = new char[1024];
         // Lecture du titre

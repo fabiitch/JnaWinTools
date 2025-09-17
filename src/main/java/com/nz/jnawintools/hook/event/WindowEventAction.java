@@ -1,4 +1,4 @@
-package com.nz.jnawintools.hook;
+package com.nz.jnawintools.hook.event;
 
 public enum WindowEventAction {
     Created,        // Fenêtre ouverte/détectée

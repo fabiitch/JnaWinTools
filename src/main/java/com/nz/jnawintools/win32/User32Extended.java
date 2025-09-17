@@ -15,8 +15,6 @@ public interface User32Extended extends StdCallLibrary {
 
     boolean EnumDisplaySettingsW(String deviceName, int modeNum, DEVMODE devMode);
 
-
-
     boolean RegisterClassExW(WinUser.WNDCLASSEX lpwcx);
     WinDef.HWND CreateWindowExW(
         int dwExStyle,
@@ -33,4 +31,22 @@ public interface User32Extended extends StdCallLibrary {
         WinDef.LPVOID lpParam);
 
     boolean DestroyWindow(WinDef.HWND hWnd);
+
+    /**
+     * BOOL ScreenToClient(HWND hWnd, LPPOINT lpPoint);
+     * Convertit des coords écran -> coords client (logiques) de la fenêtre.
+     */
+    boolean ScreenToClient(WinDef.HWND hWnd, WinDef.POINT lpPoint);
+
+    /**
+     * BOOL ClientToScreen(HWND hWnd, LPPOINT lpPoint);
+     * L’inverse : coords client -> coords écran.
+     */
+    boolean ClientToScreen(WinDef.HWND hWnd, WinDef.POINT lpPoint);
+
+    /**
+     * BOOL GetClientRect(HWND hWnd, LPRECT lpRect);
+     * Récupère la taille de la zone client (sans bordures/titres) en coords client.
+     */
+    boolean GetClientRect(WinDef.HWND hWnd, WinDef.RECT lpRect);
 }
