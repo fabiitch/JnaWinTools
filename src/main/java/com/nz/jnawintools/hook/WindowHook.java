@@ -40,6 +40,7 @@ public class WindowHook {
     }
 
     public void startHook() {
+        this.logger.log("Starting all hooks with target window = {}", windowToTrackChecker.getWindowName());
         lifecycleHook.start();
         focusHook.start();
         moveHook.start();
