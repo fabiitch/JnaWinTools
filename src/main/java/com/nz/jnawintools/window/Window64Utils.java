@@ -27,13 +27,19 @@ public class Window64Utils {
         return new Pointer(value);
     }
 
+    public static boolean isValid(WinDef.HWND hwnd) {
+        System.out.println(USER_32_EXTENDED.IsWindow(hwnd)+"aa");
+        return hwnd != null && hwnd.getPointer() != null && Pointer.nativeValue(hwnd.getPointer()) != 0
+                && USER_32_EXTENDED.IsWindow(hwnd);
+    }
+
     /**
      * ------------------ HANDLE ET STYLE ------------------
      */
 
     public static HwndResult getHwnd(String windowName) {
         KERNEL_32.SetLastError(0);
-        WinDef.HWND hwnd = User32.INSTANCE.FindWindow(null, windowName);
+        WinDef.HWND hwnd = USER_32.FindWindow(null, windowName);
         if (hwnd != null && hwnd.getPointer() != null) {
             return HwndResult.success(hwnd);
         }
@@ -48,7 +54,7 @@ public class Window64Utils {
         char[] buffer = new char[1024];
         // Lecture du titre
         Kernel32.INSTANCE.SetLastError(0);
-        int copied = User32.INSTANCE.GetWindowText(hwnd, buffer, buffer.length);
+        int copied = USER_32.GetWindowText(hwnd, buffer, buffer.length);
         int error = Kernel32.INSTANCE.GetLastError();
 
         if (copied == 0) {
@@ -444,7 +450,7 @@ public class Window64Utils {
 
         // Énumère tous les moniteurs pour trouver l’index du moniteur cible
         final List<WinUser.HMONITOR> monitors = new ArrayList<>();
-        boolean ok = User32.INSTANCE.EnumDisplayMonitors(
+        boolean ok = USER_32.EnumDisplayMonitors(
                 null, null,
                 (hMonitor, hdc, rect, data) -> {
                     monitors.add(hMonitor);
@@ -544,7 +550,7 @@ public class Window64Utils {
         info.cbSize = info.size();
 
         KERNEL_32.SetLastError(0);
-        WinDef.BOOL ok = User32.INSTANCE.GetMonitorInfo(hMonitor, info);
+        WinDef.BOOL ok = USER_32.GetMonitorInfo(hMonitor, info);
         error = KERNEL_32.GetLastError();
         if (ok == null || !ok.booleanValue()) {
             return ScreenBoundsResult.failure(error != 0 ? error : 0x40000); // code "monitor info failed"
@@ -621,7 +627,7 @@ public class Window64Utils {
                 User32.MONITORINFOEX info = new User32.MONITORINFOEX();
                 info.cbSize = info.size();
                 KERNEL_32.SetLastError(0);
-                WinDef.BOOL ok = User32.INSTANCE.GetMonitorInfo(hMonitor, info);
+                WinDef.BOOL ok = USER_32.GetMonitorInfo(hMonitor, info);
                 int error = KERNEL_32.GetLastError();
 
                 if (ok != null && ok.booleanValue()) {
@@ -637,7 +643,7 @@ public class Window64Utils {
         };
 
         KERNEL_32.SetLastError(0);
-        WinDef.BOOL ok = User32.INSTANCE.EnumDisplayMonitors(null, null, enumProc, new WinDef.LPARAM(0));
+        WinDef.BOOL ok = USER_32.EnumDisplayMonitors(null, null, enumProc, new WinDef.LPARAM(0));
         int error = KERNEL_32.GetLastError();
 
         if (ok == null || !ok.booleanValue() || monitors.isEmpty()) {
@@ -690,7 +696,7 @@ public class Window64Utils {
     public static WinApiResult setWindowPosition(WinDef.HWND hwnd, Rectangle posSize) {
         // Étape 2 : déplacer/redimensionner la fenêtre
         KERNEL_32.SetLastError(0);
-        boolean ok = User32.INSTANCE.SetWindowPos(
+        boolean ok = USER_32.SetWindowPos(
                 hwnd,
                 null,
                 posSize.x,

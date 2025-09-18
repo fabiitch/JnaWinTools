@@ -9,6 +9,8 @@ import com.sun.jna.win32.StdCallLibrary;
 public interface User32Extended extends StdCallLibrary {
     User32Extended INSTANCE = Native.load("user32", User32Extended.class);
 
+    boolean IsWindow(WinDef.HWND hWnd);
+
     boolean IsIconic(WinDef.HWND hWnd);
 
     int GetDpiForWindow(WinDef.HWND hWnd);
@@ -16,19 +18,20 @@ public interface User32Extended extends StdCallLibrary {
     boolean EnumDisplaySettingsW(String deviceName, int modeNum, DEVMODE devMode);
 
     boolean RegisterClassExW(WinUser.WNDCLASSEX lpwcx);
+
     WinDef.HWND CreateWindowExW(
-        int dwExStyle,
-        String lpClassName,
-        String lpWindowName,
-        int dwStyle,
-        int x,
-        int y,
-        int nWidth,
-        int nHeight,
-        WinDef.HWND hWndParent,
-        WinDef.HMENU hMenu,
-        WinDef.HINSTANCE hInstance,
-        WinDef.LPVOID lpParam);
+            int dwExStyle,
+            String lpClassName,
+            String lpWindowName,
+            int dwStyle,
+            int x,
+            int y,
+            int nWidth,
+            int nHeight,
+            WinDef.HWND hWndParent,
+            WinDef.HMENU hMenu,
+            WinDef.HINSTANCE hInstance,
+            WinDef.LPVOID lpParam);
 
     boolean DestroyWindow(WinDef.HWND hWnd);
 
