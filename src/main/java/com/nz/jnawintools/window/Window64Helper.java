@@ -204,13 +204,11 @@ public class Window64Helper {
                 HwndResult::failure).getHwnd();
     }
 
-
     public String getName(WinDef.HWND hwnd) {
         return withHwnd(hwnd,
                 "getName",
                 res -> Window64Utils.getName(hwnd)).getResult();
     }
-
 
 
 }

@@ -28,7 +28,6 @@ public class Window64Utils {
     }
 
     public static boolean isValid(WinDef.HWND hwnd) {
-        System.out.println(USER_32_EXTENDED.IsWindow(hwnd)+"aa");
         return hwnd != null && hwnd.getPointer() != null && Pointer.nativeValue(hwnd.getPointer()) != 0
                 && USER_32_EXTENDED.IsWindow(hwnd);
     }
