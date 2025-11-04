@@ -10,7 +10,7 @@ repositories {
 }
 
 dependencies {
-    api "net.java.dev.jna:jna-platform:$jnaVersion"
+    implementation "net.java.dev.jna:jna-platform:$jnaVersion"
 
     compileOnly "org.projectlombok:lombok:$lombokVersion"
     testCompileOnly "org.projectlombok:lombok:$lombokVersion"
