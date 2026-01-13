@@ -1,7 +1,7 @@
 package com.nz.jnawintools;
 
-import com.nz.jnawintools.hook.event.WindowEventAction;
 import com.nz.jnawintools.hook.WindowHook;
+import com.nz.jnawintools.hook.event.WindowEventAction;
 import com.nz.jnawintools.hook.event.dispatch.SyncEventDispatcher;
 import com.nz.jnawintools.hook.window.WindowTitleEqualsChecker;
 import com.nz.jnawintools.log.impl.JWTMuttedLogger;

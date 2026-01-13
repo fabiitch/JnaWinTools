@@ -1,9 +1,9 @@
 package com.nz.jnawintools.window;
 
-import com.nz.jnawintools.win32.User32Extended;
 import com.nz.jnawintools.enums.WindowDisplayMode;
 import com.nz.jnawintools.log.JWTLogger;
 import com.nz.jnawintools.log.impl.JWTMuttedLogger;
+import com.nz.jnawintools.win32.User32Extended;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 import com.sun.jna.platform.win32.User32;
