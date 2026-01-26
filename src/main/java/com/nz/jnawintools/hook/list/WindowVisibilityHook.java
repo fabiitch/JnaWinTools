@@ -3,7 +3,7 @@ package com.nz.jnawintools.hook.list;
 import com.nz.jnawintools.hook.event.WindowEventAction;
 import com.nz.jnawintools.hook.event.dispatch.AbstractEventDispatcher;
 import com.nz.jnawintools.hook.window.WindowChecker;
-import com.nz.jnawintools.log.JWTLogger;
+import org.slf4j.Logger;
 import com.sun.jna.platform.win32.WinDef;
 
 import static com.nz.jnawintools.hook.cst.WinEventConstants.EVENT_OBJECT_HIDE;
@@ -12,7 +12,7 @@ import static com.nz.jnawintools.hook.cst.WinEventConstants.EVENT_OBJECT_SHOW;
 public class WindowVisibilityHook extends BaseWindowHook {
     public WindowVisibilityHook(WindowChecker windowToTrackChecker,
                                 AbstractEventDispatcher<WindowEventAction> messageDispatcher,
-                                JWTLogger logger) {
+                                Logger logger) {
         super(windowToTrackChecker, messageDispatcher, logger);
     }
 

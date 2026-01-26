@@ -3,18 +3,18 @@ package com.nz.jnawintools.hook.list;
 import com.nz.jnawintools.hook.event.WindowEventAction;
 import com.nz.jnawintools.hook.event.dispatch.AbstractEventDispatcher;
 import com.nz.jnawintools.hook.window.WindowChecker;
-import com.nz.jnawintools.log.JWTLogger;
-import com.nz.jnawintools.log.WindowHookLogger;
 import com.nz.jnawintools.window.Window64Helper;
 import com.sun.jna.Pointer;
 import com.sun.jna.platform.win32.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static com.nz.jnawintools.hook.cst.WinEventConstants.WINEVENT_OUTOFCONTEXT;
 import static com.nz.jnawintools.hook.cst.WinEventConstants.WINEVENT_SKIPOWNPROCESS;
 
 public abstract class BaseWindowHook {
 
-    protected final WindowHookLogger logger;
+    protected final Logger logger;
     protected final WindowChecker windowToTrackChecker;
 
     protected final Window64Helper window64Helper;
@@ -26,11 +26,13 @@ public abstract class BaseWindowHook {
 
     public BaseWindowHook(WindowChecker windowToTrackChecker,
                            AbstractEventDispatcher<WindowEventAction> messageDispatcher,
-                           JWTLogger logger) {
+                           Logger logger) {
         this.windowToTrackChecker = windowToTrackChecker;
         this.dispatcher = messageDispatcher;
-        this.logger = new WindowHookLogger(name() + "-" + windowToTrackChecker.getWindowName(), logger);
-        this.window64Helper = new Window64Helper(logger);
+        this.logger = logger != null
+                ? logger
+                : LoggerFactory.getLogger("WindowHook-" + name() + "-" + windowToTrackChecker.getWindowName());
+        this.window64Helper = new Window64Helper(this.logger);
     }
 
     protected abstract void onEvent(WinDef.DWORD event,
