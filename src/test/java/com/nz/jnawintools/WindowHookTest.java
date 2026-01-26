@@ -4,7 +4,7 @@ import com.nz.jnawintools.hook.WindowHook;
 import com.nz.jnawintools.hook.event.WindowEventAction;
 import com.nz.jnawintools.hook.event.dispatch.SyncEventDispatcher;
 import com.nz.jnawintools.hook.window.WindowTitleEqualsChecker;
-import com.nz.jnawintools.log.impl.JWTMuttedLogger;
+import org.slf4j.LoggerFactory;
 import com.sun.jna.platform.win32.User32;
 import com.sun.jna.platform.win32.WinUser;
 import org.junit.jupiter.api.Disabled;
@@ -18,7 +18,7 @@ public class WindowHookTest {
     public void testHook() throws InterruptedException {
         WindowHook windowHook = new WindowHook(WindowTitleEqualsChecker.get("Calculatrice"),
             new SyncEventDispatcher<>(),
-            new JWTMuttedLogger());
+            LoggerFactory.getLogger(WindowHookTest.class));
 
         windowHook.addListener(new Consumer<WindowEventAction>() {
             int inc = 0;
