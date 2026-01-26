@@ -1,8 +1,8 @@
 package com.nz.jnawintools.window;
 
 import com.nz.jnawintools.enums.WindowDisplayMode;
-import com.nz.jnawintools.log.JWTLogger;
-import com.nz.jnawintools.log.impl.JWTMuttedLogger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.nz.jnawintools.win32.User32Extended;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
@@ -16,7 +16,7 @@ public class Window32Utils {
 
     private final static User32Extended USER_32_EXTENDED = User32Extended.INSTANCE;
 
-    public static final JWTLogger logger = new JWTMuttedLogger();
+    public static final Logger logger = LoggerFactory.getLogger(Window32Utils.class);
 
     public static boolean isActive(String windowName) {
         WinDef.HWND hwnd = User32.INSTANCE.FindWindow(null, windowName);
