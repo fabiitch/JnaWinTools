@@ -7,14 +7,14 @@ import com.nz.jnawintools.hook.list.WindowFocusHook;
 import com.nz.jnawintools.hook.list.WindowLifecycleHook;
 import com.nz.jnawintools.hook.list.WindowMoveHook;
 import com.nz.jnawintools.hook.window.WindowChecker;
-import com.nz.jnawintools.log.JWTLogger;
+import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 public class WindowHook {
 
-    private final JWTLogger logger;
+    private final Logger logger;
     private final AbstractEventDispatcher<WindowEventAction> messageDispatcher;
     private final WindowFocusHook focusHook;
     private final WindowLifecycleHook lifecycleHook;
@@ -27,7 +27,7 @@ public class WindowHook {
 
     public WindowHook(WindowChecker windowToTrackChecker,
                       AbstractEventDispatcher<WindowEventAction> abstractEventDispatcher,
-                      JWTLogger logger) {
+                      Logger logger) {
         this.logger = logger;
         this.messageDispatcher = abstractEventDispatcher;
         this.focusHook = new WindowFocusHook(windowToTrackChecker, messageDispatcher, logger);
@@ -35,12 +35,12 @@ public class WindowHook {
 //        this.minMaxHook = new WindowMinMaxHook(windowToTrackChecker, messageDispatcher, logger);
         this.lifecycleHook = new WindowLifecycleHook(windowToTrackChecker, messageDispatcher, logger);
 //        this.visibilityHook = new WindowVisibilityHook(windowToTrackChecker, messageDispatcher, logger);
-        this.logger.log("Create with target window = {}", windowToTrackChecker.getWindowName());
+        this.logger.info("Create with target window = {}", windowToTrackChecker.getWindowName());
         this.windowToTrackChecker = windowToTrackChecker;
     }
 
     public void startHook() {
-        this.logger.log("Starting all hooks with target window = {}", windowToTrackChecker.getWindowName());
+        this.logger.info("Starting all hooks with target window = {}", windowToTrackChecker.getWindowName());
         lifecycleHook.start();
         focusHook.start();
         moveHook.start();
@@ -54,7 +54,7 @@ public class WindowHook {
 //        minMaxHook.dispose();
 //        visibilityHook.dispose();
         lifecycleHook.stop();
-        this.logger.log("Disposed all hooks with target window = {}", windowToTrackChecker.getWindowName());
+        this.logger.info("Disposed all hooks with target window = {}", windowToTrackChecker.getWindowName());
     }
 
     public void addListener(Consumer<WindowEventAction> listener) {

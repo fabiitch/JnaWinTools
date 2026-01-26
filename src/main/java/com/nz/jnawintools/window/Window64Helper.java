@@ -1,8 +1,8 @@
 package com.nz.jnawintools.window;
 
 import com.nz.jnawintools.enums.WindowDisplayMode;
-import com.nz.jnawintools.log.JWTLogger;
-import com.nz.jnawintools.log.impl.JWTMuttedLogger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.nz.jnawintools.window.result.*;
 import com.nz.jnawintools.window.utils.WindowsErrorMap;
 import com.sun.jna.platform.win32.WinDef;
@@ -13,14 +13,14 @@ import java.util.function.Function;
 
 public class Window64Helper {
     @Getter
-    private final JWTLogger logger;
+    private final Logger logger;
 
-    public Window64Helper(JWTLogger logger) {
-        this.logger = logger;
+    public Window64Helper(Logger logger) {
+        this.logger = logger != null ? logger : LoggerFactory.getLogger(Window64Helper.class);
     }
 
     public Window64Helper() {
-        this(new JWTMuttedLogger());
+        this(LoggerFactory.getLogger(Window64Helper.class));
     }
 
     private <T extends WinApiResult> T withWindowName(
