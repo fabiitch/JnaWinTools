@@ -65,10 +65,10 @@ public abstract class BaseWindowHook {
      */
     public synchronized void start() {
         if (started) {
-            logger.debug("already started");
+            logger.trace("already started");
             return;
         }
-        logger.debug("starting...");
+        logger.trace("starting...");
 
         // Crée le callback et le garde en champ (réf forte)
         eventProc = (hWinEventHook, event, hwnd, idObject, idChild, dwEventThread, dwmsEventTime) -> {
@@ -95,7 +95,7 @@ public abstract class BaseWindowHook {
             throw new IllegalStateException("SetWinEventHook failed: " + err);
         }
 
-        logger.debug("hook installed handle=0x{} (min={}, max={}, flags=0x{})",
+        logger.trace("hook installed handle=0x{} (min={}, max={}, flags=0x{})",
                 Long.toHexString(Pointer.nativeValue(hookHandle.getPointer())),
                 eventMin(), eventMax(), Integer.toHexString(hookFlags()));
 
@@ -104,14 +104,14 @@ public abstract class BaseWindowHook {
 
     public synchronized void stop() {
         if (!started) {
-            logger.debug("already stopped");
+            logger.trace("already stopped");
             return;
         }
-        logger.debug("stopping...");
+        logger.trace("stopping...");
 
         if (hookHandle != null) {
             boolean ok = User32.INSTANCE.UnhookWinEvent(hookHandle);
-            logger.debug("UnhookWinEvent -> {}", ok);
+            logger.trace("UnhookWinEvent -> {}", ok);
             hookHandle = null;
         }
         eventProc = null;

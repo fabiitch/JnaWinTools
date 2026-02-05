@@ -34,7 +34,7 @@ public class Window64Helper {
             logger.error("Window not found: {} (errorCode={})", windowName, hwndRes.getErrorCode());
             return errorFactory.apply(hwndRes.getErrorCode()); // utilise la fabrique
         }
-        logger.debug("Start action {} for window={}", actionName, windowName);
+        logger.trace("Start action {} for window={}", actionName, windowName);
         return withHwnd(hwndRes.getHwnd(), actionName, action);
     }
 
@@ -54,9 +54,9 @@ public class Window64Helper {
         } else {
             if (result instanceof WinApiResultExtended<?>) {
                 Object value = ((WinApiResultExtended<?>) result).getResult();
-                logger.debug("Action={} succeeded for window={}, result={}", actionName, windowName, value);
+                logger.trace("Action={} succeeded for window={}, result={}", actionName, windowName, value);
             } else {
-                logger.debug("Action={} succeeded for window={}", actionName, windowName);
+                logger.trace("Action={} succeeded for window={}", actionName, windowName);
             }
         }
         return result;
