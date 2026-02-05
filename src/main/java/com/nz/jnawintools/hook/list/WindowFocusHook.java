@@ -22,6 +22,7 @@ public class WindowFocusHook extends BaseWindowHook {
     public synchronized void start() {
         WinDef.HWND foreGroundWindow = window64Helper.getForeGroundWindow();
         hasFocus = windowToTrackChecker.isWindow(foreGroundWindow);
+        logger.trace("[{}] initial focus state={} for hwnd={}", name(), hasFocus, foreGroundWindow);
         super.start();
     }
 
@@ -29,9 +30,14 @@ public class WindowFocusHook extends BaseWindowHook {
     protected void onEvent(WinDef.DWORD event, WinDef.HWND hwnd,
                            WinDef.LONG idObject, WinDef.LONG idChild,
                            WinDef.DWORD dwEventThread, WinDef.DWORD dwmsEventTime) {
-        if (idObject.intValue() != 0 || idChild.intValue() != 0) return;
+        if (idObject.intValue() != 0 || idChild.intValue() != 0) {
+            logger.trace("[{}] ignored event={} (idObject={}, idChild={})", name(), event.intValue(), idObject.intValue(), idChild.intValue());
+            return;
+        }
 
         boolean trackedWindowHasFocus = windowToTrackChecker.isWindow(hwnd);
+        logger.trace("[{}] event={} hwnd={} hasFocusBefore={} trackedWindowHasFocus={}",
+                name(), event.intValue(), hwnd, hasFocus, trackedWindowHasFocus);
 
         WindowEventAction action = null;
         if (hasFocus && !trackedWindowHasFocus) {
@@ -40,8 +46,10 @@ public class WindowFocusHook extends BaseWindowHook {
             action = WindowEventAction.GainFocus;
         }
         hasFocus = trackedWindowHasFocus;
-        if (action != null)
+        if (action != null) {
+            logger.trace("[{}] dispatch action={}", name(), action);
             dispatch(action);
+        }
     }
 
     @Override
