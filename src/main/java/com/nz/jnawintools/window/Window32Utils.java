@@ -42,7 +42,7 @@ public class Window32Utils {
             style &= ~WinUser.WS_OVERLAPPEDWINDOW;
             style |= WinUser.WS_POPUP | WinUser.WS_VISIBLE;
             User32.INSTANCE.SetWindowLong(hwnd, WinUser.GWL_STYLE, style);
-            logger.debug( "setFullScreenBorderLess() window={} ok !", windowName);
+            logger.trace( "setFullScreenBorderLess() window={} ok !", windowName);
         } else {
             logger.error( "setFullScreenBorderLess() window={} not found", windowName);
         }
@@ -54,7 +54,7 @@ public class Window32Utils {
             int exStyle = User32.INSTANCE.GetWindowLong(hwnd, WinUser.GWL_EXSTYLE);
             exStyle |= WinUser.WS_EX_LAYERED | WinUser.WS_EX_TRANSPARENT;
             User32.INSTANCE.SetWindowLong(hwnd, WinUser.GWL_EXSTYLE, exStyle);
-            logger.debug( "setClickThrough() window={} ok !", windowName);
+            logger.trace( "setClickThrough() window={} ok !", windowName);
         } else {
             logger.error( "setClickThrough() window={} not found", windowName);
         }
@@ -66,7 +66,7 @@ public class Window32Utils {
             int exStyle = User32.INSTANCE.GetWindowLong(hwnd, WinUser.GWL_EXSTYLE);
             exStyle &= ~WinUser.WS_EX_TRANSPARENT;
             User32.INSTANCE.SetWindowLong(hwnd, WinUser.GWL_EXSTYLE, exStyle);
-            logger.debug( "setClickThroughReceiver() window={} ok !", windowName);
+            logger.trace( "setClickThroughReceiver() window={} ok !", windowName);
         } else {
             logger.error( "setClickThroughReceiver() window={} not found", windowName);
         }
@@ -78,7 +78,7 @@ public class Window32Utils {
             User32.INSTANCE.SetWindowPos(hwnd, new WinDef.HWND(new Pointer(-1)),
                     0, 0, 0, 0, WinUser.SWP_NOMOVE | WinUser.SWP_NOSIZE | WinUser.SWP_NOACTIVATE);
 //            0, 0, 0, 0, WinUser.SWP_NOMOVE | WinUser.SWP_NOSIZE | WinUser.SWP_SHOWWINDOW);
-            logger.debug( "setAlwaysOnTop() window={} ok !", windowName);
+            logger.trace( "setAlwaysOnTop() window={} ok !", windowName);
         } else {
             logger.error( "setAlwaysOnTop() window={} not found", windowName);
         }
@@ -141,7 +141,7 @@ public class Window32Utils {
             return false;
         }
         boolean visible = User32.INSTANCE.IsWindowVisible(hwnd);
-        logger.debug( "isVisible() window={} visible={}", windowName, visible);
+        logger.trace( "isVisible() window={} visible={}", windowName, visible);
         return visible;
     }
 
@@ -169,19 +169,19 @@ public class Window32Utils {
 
         int width = rect.right - rect.left;
         int height = rect.bottom - rect.top;
-        logger.debug( "getWindowBounds() window={} at {}", windowName, rect);
+        logger.trace( "getWindowBounds() window={} at {}", windowName, rect);
         return new Rectangle(rect.left, rect.top, width, height);
     }
 
     public static Rectangle getScreenBoundsAwt(int screenIndex) {
         if (screenIndex == -1) {
-            logger.debug( "getScreenBoundsAwt called with screenIndex = -1, Bad value!");
+            logger.trace( "getScreenBoundsAwt called with screenIndex = -1, Bad value!");
             return null;
         }
         GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
         GraphicsDevice[] screens = ge.getScreenDevices();
         Rectangle screenBounds = screens[screenIndex].getDefaultConfiguration().getBounds();
-        logger.debug( "getScreenBoundsAwt of screenIndex ={} result ={}", screenIndex, screenBounds);
+        logger.trace( "getScreenBoundsAwt of screenIndex ={} result ={}", screenIndex, screenBounds);
         return screenBounds;
     }
 
@@ -211,7 +211,7 @@ public class Window32Utils {
             }
         }
         if (bestIndex >= 0) {
-            logger.debug(
+            logger.trace(
                     "getScreenIndexAwt() window={} best match = screen index {} with size={}/{}, pos={}/{}",
                     windowName, bestIndex, bestBounds.width, bestBounds.height, bestBounds.x, bestBounds.y);
             return bestIndex;
@@ -238,7 +238,7 @@ public class Window32Utils {
         );
 
         if (ok) {
-            logger.debug( "setWindowPosition() success! window={} at pos={}", windowName, posSize);
+            logger.trace( "setWindowPosition() success! window={} at pos={}", windowName, posSize);
         } else {
             logger.error( "setWindowPosition() failed to move window={} at pos={}", windowName, posSize);
 
@@ -252,7 +252,7 @@ public class Window32Utils {
             return -1;
         }
         int dpi = USER_32_EXTENDED.GetDpiForWindow(hwnd);
-        logger.debug( "getDpiForWindow() window={} has dpi={}", windowName, dpi);
+        logger.trace( "getDpiForWindow() window={} has dpi={}", windowName, dpi);
         return dpi;
     }
 }
