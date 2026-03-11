@@ -2,16 +2,23 @@ plugins {
     id 'java-library'
 }
 
-group = 'com.nz'
+group = 'com.nz.jnawintools'
 version = '1.0-SNAPSHOT'
 
 repositories {
     mavenCentral()
 }
 
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
 dependencies {
     implementation "net.java.dev.jna:jna-platform:$jnaVersion"
     implementation "org.slf4j:slf4j-api:$slf4jVersion"
+
     testImplementation platform("org.apache.logging.log4j:log4j-bom:$log4jVersion")
     testRuntimeOnly "org.apache.logging.log4j:log4j-api"
     testRuntimeOnly "org.apache.logging.log4j:log4j-core"
