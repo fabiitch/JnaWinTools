@@ -1,5 +1,6 @@
 package com.nz.jnawintools.hook.v2;
 
+import com.nz.jnawintools.hook.v2.handler.BaseWindowEventHandler;
 import org.jctools.queues.MpscUnboundedArrayQueue;
 import org.slf4j.Logger;
 
@@ -8,19 +9,22 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class WinEventPump {
 
     private final Logger logger;
-    private final MpscUnboundedArrayQueue<RawWinEvent> queue = new MpscUnboundedArrayQueue<>(1024);
+    private final MpscUnboundedArrayQueue<RawWinEvent> queue;
     private final WinEventRouter router = new WinEventRouter();
     private final WinEventPumpThread pumpThread;
 
     private final AtomicBoolean running = new AtomicBoolean(false);
     private Thread consumerThread;
 
-    public WinEventPump(Logger logger, WinEventPumpThread pumpThread) {
+    public WinEventPump(Logger logger,
+                        WinEventPumpThread pumpThread,
+                        MpscUnboundedArrayQueue<RawWinEvent> queue) {
         this.logger = logger;
         this.pumpThread = pumpThread;
+        this.queue = queue;
     }
 
-    public void registerHandler(com.nz.jnawintools.hook.v2.handler.BaseWindowEventHandler handler) {
+    public void registerHandler(BaseWindowEventHandler handler) {
         router.register(handler);
     }
 
@@ -61,9 +65,5 @@ public class WinEventPump {
         if (consumerThread != null) {
             consumerThread.interrupt();
         }
-    }
-
-    public MpscUnboundedArrayQueue<RawWinEvent> queue() {
-        return queue;
     }
 }
