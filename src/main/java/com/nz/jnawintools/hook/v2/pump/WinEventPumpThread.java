@@ -1,8 +1,12 @@
-package com.nz.jnawintools.hook.v2;
+package com.nz.jnawintools.hook.v2.pump;
 
+import com.nz.jnawintools.hook.cst.WinEventConstants;
+import com.nz.jnawintools.hook.v2.event.CriticalWinEventQueue;
+import com.nz.jnawintools.hook.v2.event.LocationChangeBuffer;
+import com.nz.jnawintools.hook.v2.handler.WinEventRange;
 import com.sun.jna.Pointer;
 import com.sun.jna.platform.win32.*;
-import org.jctools.queues.MpscUnboundedArrayQueue;
+import lombok.Setter;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
@@ -10,11 +14,13 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+
 public class WinEventPumpThread extends Thread {
 
     private final Logger logger;
     private final List<WinEventRange> ranges;
-    private final MpscUnboundedArrayQueue<RawWinEvent> queue;
+    private final CriticalWinEventQueue criticalQueue;
+    private final LocationChangeBuffer locationBuffer;
 
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final CountDownLatch startedLatch = new CountDownLatch(1);
@@ -25,14 +31,19 @@ public class WinEventPumpThread extends Thread {
     private volatile int nativeThreadId;
     private volatile Throwable startupFailure;
 
+    @Setter
+    private WinEventPump pump;
+
     public WinEventPumpThread(String name,
                               Logger logger,
                               List<WinEventRange> ranges,
-                              MpscUnboundedArrayQueue<RawWinEvent> queue) {
+                              CriticalWinEventQueue criticalQueue,
+                              LocationChangeBuffer locationBuffer) {
         super(name);
         this.logger = logger;
         this.ranges = ranges;
-        this.queue = queue;
+        this.criticalQueue = criticalQueue;
+        this.locationBuffer = locationBuffer;
         setDaemon(true);
     }
 
@@ -45,7 +56,29 @@ public class WinEventPumpThread extends Thread {
             for (WinEventRange range : ranges) {
                 WinUser.WinEventProc proc = (hWinEventHook, event, hwnd, idObject, idChild, dwEventThread, dwmsEventTime) -> {
                     try {
-                        queue.offer(new RawWinEvent(event, hwnd, idObject, idChild, dwEventThread, dwmsEventTime));
+                        int eventCode = event.intValue();
+
+                        if (eventCode == WinEventConstants.EVENT_OBJECT_LOCATIONCHANGE) {
+                            locationBuffer.publish(
+                                    eventCode,
+                                    hwnd,
+                                    idObject.intValue(),
+                                    idChild.intValue(),
+                                    dwEventThread.intValue(),
+                                    dwmsEventTime.intValue()
+                            );
+                        } else {
+                            criticalQueue.publish(
+                                    eventCode,
+                                    hwnd,
+                                    idObject.intValue(),
+                                    idChild.intValue(),
+                                    dwEventThread.intValue(),
+                                    dwmsEventTime.intValue()
+                            );
+                        }
+                        pump.signalWork();
+
                     } catch (Throwable t) {
                         logger.error("[{}] callback failure", range.name(), t);
                     }
