@@ -1,23 +1,25 @@
-package com.nz.jnawintools.hook.v2.pump;
+package com.nz.jnawintools.hook.pump;
 
 import com.nz.jnawintools.hook.cst.WinEventConstants;
-import com.nz.jnawintools.hook.v2.event.CriticalWinEventQueue;
-import com.nz.jnawintools.hook.v2.event.LocationChangeBuffer;
-import com.nz.jnawintools.hook.v2.handler.WinEventRange;
+import com.nz.jnawintools.hook.event.CriticalWinEventQueue;
+import com.nz.jnawintools.hook.event.LocationChangeBuffer;
+import com.nz.jnawintools.hook.handler.WinEventRange;
 import com.sun.jna.Pointer;
-import com.sun.jna.platform.win32.*;
+import com.sun.jna.platform.win32.Kernel32;
+import com.sun.jna.platform.win32.User32;
+import com.sun.jna.platform.win32.WinNT;
+import com.sun.jna.platform.win32.WinUser;
 import lombok.Setter;
-import org.slf4j.Logger;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-
+@Slf4j
 public class WinEventPumpThread extends Thread {
 
-    private final Logger logger;
     private final List<WinEventRange> ranges;
     private final CriticalWinEventQueue criticalQueue;
     private final LocationChangeBuffer locationBuffer;
@@ -35,12 +37,10 @@ public class WinEventPumpThread extends Thread {
     private WinEventPump pump;
 
     public WinEventPumpThread(String name,
-                              Logger logger,
                               List<WinEventRange> ranges,
                               CriticalWinEventQueue criticalQueue,
                               LocationChangeBuffer locationBuffer) {
         super(name);
-        this.logger = logger;
         this.ranges = ranges;
         this.criticalQueue = criticalQueue;
         this.locationBuffer = locationBuffer;
@@ -80,7 +80,7 @@ public class WinEventPumpThread extends Thread {
                         pump.signalWork();
 
                     } catch (Throwable t) {
-                        logger.error("[{}] callback failure", range.name(), t);
+                        log.error("[{}] callback failure", range.name(), t);
                     }
                 };
 
@@ -102,7 +102,7 @@ public class WinEventPumpThread extends Thread {
                 callbacks.add(proc);
                 hookHandles.add(handle);
 
-                logger.trace("Installed hook [{}] handle=0x{} min={} max={} flags=0x{}",
+                log.trace("Installed hook [{}] handle=0x{} min={} max={} flags=0x{}",
                         range.name(),
                         Long.toHexString(Pointer.nativeValue(handle.getPointer())),
                         range.eventMin(),
@@ -127,7 +127,7 @@ public class WinEventPumpThread extends Thread {
         }
 
         if (result == -1) {
-            logger.error("GetMessage failed. err={}", Kernel32.INSTANCE.GetLastError());
+            log.error("GetMessage failed. err={}", Kernel32.INSTANCE.GetLastError());
         }
 
         cleanup();
@@ -162,7 +162,7 @@ public class WinEventPumpThread extends Thread {
             try {
                 User32.INSTANCE.UnhookWinEvent(handle);
             } catch (Throwable t) {
-                logger.error("UnhookWinEvent failed", t);
+                log.error("UnhookWinEvent failed", t);
             }
         }
         hookHandles.clear();
