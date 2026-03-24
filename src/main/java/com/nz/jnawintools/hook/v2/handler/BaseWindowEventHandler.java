@@ -2,7 +2,7 @@ package com.nz.jnawintools.hook.v2.handler;
 
 import com.nz.jnawintools.hook.event.WindowEventAction;
 import com.nz.jnawintools.hook.event.dispatch.AbstractEventDispatcher;
-import com.nz.jnawintools.hook.v2.RawWinEvent;
+import com.nz.jnawintools.hook.v2.event.RawWinEvent;
 import com.nz.jnawintools.hook.window.WindowChecker;
 import com.nz.jnawintools.window.Window64Helper;
 import org.slf4j.Logger;
