@@ -1,7 +1,7 @@
-package com.nz.jnawintools.hook.v2;
+package com.nz.jnawintools.hook;
 
-import com.nz.jnawintools.hook.v2.event.RawWinEvent;
-import com.nz.jnawintools.hook.v2.handler.BaseWindowEventHandler;
+import com.nz.jnawintools.hook.event.RawWinEvent;
+import com.nz.jnawintools.hook.handler.BaseWindowEventHandler;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -1,30 +1,29 @@
-package com.nz.jnawintools.hook.v2.pump;
+package com.nz.jnawintools.hook.pump;
 
-import com.nz.jnawintools.hook.v2.WinEventRouter;
-import com.nz.jnawintools.hook.v2.event.CriticalWinEventQueue;
-import com.nz.jnawintools.hook.v2.event.LocationChangeBuffer;
-import com.nz.jnawintools.hook.v2.handler.BaseWindowEventHandler;
-import org.slf4j.Logger;
+import com.nz.jnawintools.hook.WinEventRouter;
+import com.nz.jnawintools.hook.event.CriticalWinEventQueue;
+import com.nz.jnawintools.hook.event.LocationChangeBuffer;
+import com.nz.jnawintools.hook.handler.BaseWindowEventHandler;
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
+@Slf4j
 public class WinEventPump {
 
     private final CriticalWinEventQueue criticalQueue;
     private final LocationChangeBuffer locationBuffer;
     private final WinEventPumpThread pumpThread;
     private final WinEventRouter router;
-    private final Logger logger;
 
     private final AtomicBoolean running = new AtomicBoolean(false);
 
     private volatile Thread consumerThread;
 
-    public WinEventPump(Logger logger,
-                        CriticalWinEventQueue criticalQueue,
+    public WinEventPump(CriticalWinEventQueue criticalQueue,
                         LocationChangeBuffer locationBuffer,
                         WinEventPumpThread pumpThread) {
-        this.logger = logger;
         this.criticalQueue = criticalQueue;
         this.locationBuffer = locationBuffer;
         this.pumpThread = pumpThread;
@@ -51,7 +50,7 @@ public class WinEventPump {
                     try {
                         router.route(event);
                     } catch (Throwable t) {
-                        logger.error("Critical routing failed", t);
+                        log.error("Critical routing failed", t);
                     }
                 }, 1024);
 
@@ -59,13 +58,12 @@ public class WinEventPump {
                     try {
                         router.route(event);
                     } catch (Throwable t) {
-                        logger.error("Location routing failed", t);
+                        log.error("Location routing failed", t);
                     }
                 });
 
                 if (drainedCritical == 0 && !drainedLocation) {
-                    // sommeil léger + sécurité
-                    LockSupport.parkNanos(1_000_000L); // 1 ms
+                    LockSupport.parkNanos(1_000_000L);
                 }
             }
         }, "WinEventConsumer");
@@ -83,6 +81,7 @@ public class WinEventPump {
             LockSupport.unpark(consumerThread);
         }
     }
+
     public void registerHandler(BaseWindowEventHandler handler) {
         router.register(handler);
     }

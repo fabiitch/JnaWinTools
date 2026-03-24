@@ -1,26 +1,26 @@
-package com.nz.jnawintools.hook.v2.handler;
+package com.nz.jnawintools.hook.handler;
 
+import com.nz.jnawintools.hook.event.RawWinEvent;
 import com.nz.jnawintools.hook.event.WindowEventAction;
 import com.nz.jnawintools.hook.event.dispatch.AbstractEventDispatcher;
-import com.nz.jnawintools.hook.v2.event.RawWinEvent;
 import com.nz.jnawintools.hook.window.WindowChecker;
-import org.slf4j.Logger;
+import lombok.extern.slf4j.Slf4j;
 
 import static com.nz.jnawintools.hook.cst.WinEventConstants.EVENT_OBJECT_LOCATIONCHANGE;
 import static com.nz.jnawintools.hook.cst.WinEventConstants.EVENT_SYSTEM_MINIMIZE_END;
 import static com.nz.jnawintools.hook.cst.WinEventConstants.EVENT_SYSTEM_MINIMIZE_START;
 
-public class WindowMoveHandlerV2 extends BaseWindowEventHandler {
+@Slf4j
+public class WindowMoveHandler extends BaseWindowEventHandler {
 
-    public WindowMoveHandlerV2(WindowChecker windowToTrackChecker,
-                               AbstractEventDispatcher<WindowEventAction> dispatcher,
-                               Logger logger) {
-        super(windowToTrackChecker, dispatcher, logger);
+    public WindowMoveHandler(WindowChecker windowToTrackChecker,
+                             AbstractEventDispatcher<WindowEventAction> dispatcher) {
+        super(windowToTrackChecker, dispatcher);
     }
 
     @Override
     public String name() {
-        return "MoveHandlerV2";
+        return "MoveHandler";
     }
 
     @Override
@@ -34,16 +34,16 @@ public class WindowMoveHandlerV2 extends BaseWindowEventHandler {
     @Override
     public void handle(RawWinEvent event) {
         if (!event.isWindowObject()) {
-            logger.trace("[{}] ignored event={} (idObject={}, idChild={})",
+            log.trace("[{}] ignored event={} (idObject={}, idChild={})",
                     name(), event.getEvent(), event.getIdObject(), event.getIdChild());
             return;
         }
         if (!windowToTrackChecker.isWindow(event.getHwnd())) {
-            logger.trace("[{}] ignored event={} for non tracked hwnd={}", name(), event.getEvent(), event.getHwnd());
+            log.trace("[{}] ignored event={} for non tracked hwnd={}", name(), event.getEvent(), event.getHwnd());
             return;
         }
 
-        logger.trace("[{}] dispatch action={} for hwnd={} event={}",
+        log.trace("[{}] dispatch action={} for hwnd={} event={}",
                 name(), WindowEventAction.Move, event.getHwnd(), event.getEvent());
         dispatch(WindowEventAction.Move);
     }

@@ -1,33 +1,33 @@
-package com.nz.jnawintools.hook.v2.handler;
+package com.nz.jnawintools.hook.handler;
 
+import com.nz.jnawintools.hook.event.RawWinEvent;
 import com.nz.jnawintools.hook.event.WindowEventAction;
 import com.nz.jnawintools.hook.event.dispatch.AbstractEventDispatcher;
-import com.nz.jnawintools.hook.v2.event.RawWinEvent;
 import com.nz.jnawintools.hook.window.WindowChecker;
 import com.sun.jna.platform.win32.WinDef;
-import org.slf4j.Logger;
+import lombok.extern.slf4j.Slf4j;
 
 import static com.nz.jnawintools.hook.cst.WinEventConstants.EVENT_SYSTEM_FOREGROUND;
 
-public class WindowFocusHandlerV2 extends BaseWindowEventHandler {
+@Slf4j
+public class WindowFocusHandler extends BaseWindowEventHandler {
 
     private volatile boolean hasFocus;
 
-    public WindowFocusHandlerV2(WindowChecker windowToTrackChecker,
-                                AbstractEventDispatcher<WindowEventAction> dispatcher,
-                                Logger logger) {
-        super(windowToTrackChecker, dispatcher, logger);
+    public WindowFocusHandler(WindowChecker windowToTrackChecker,
+                              AbstractEventDispatcher<WindowEventAction> dispatcher) {
+        super(windowToTrackChecker, dispatcher);
     }
 
     public void init() {
         WinDef.HWND foregroundWindow = window64Helper.getForeGroundWindow();
         hasFocus = windowToTrackChecker.isWindow(foregroundWindow);
-        logger.trace("[{}] initial focus state={} for hwnd={}", name(), hasFocus, foregroundWindow);
+        log.trace("[{}] initial focus state={} for hwnd={}", name(), hasFocus, foregroundWindow);
     }
 
     @Override
     public String name() {
-        return "FocusHandlerV2";
+        return "FocusHandler";
     }
 
     @Override
@@ -38,7 +38,7 @@ public class WindowFocusHandlerV2 extends BaseWindowEventHandler {
     @Override
     public void handle(RawWinEvent event) {
         boolean trackedWindowHasFocus = windowToTrackChecker.isWindow(event.getHwnd());
-        logger.trace("[{}] event={} hwnd={} hasFocusBefore={} trackedWindowHasFocus={}",
+        log.trace("[{}] event={} hwnd={} hasFocusBefore={} trackedWindowHasFocus={}",
                 name(), event.getEvent(), event.getHwnd(), hasFocus, trackedWindowHasFocus);
 
         WindowEventAction action = null;
@@ -50,7 +50,7 @@ public class WindowFocusHandlerV2 extends BaseWindowEventHandler {
 
         hasFocus = trackedWindowHasFocus;
         if (action != null) {
-            logger.trace("[{}] dispatch action={}", name(), action);
+            log.trace("[{}] dispatch action={}", name(), action);
             dispatch(action);
         }
     }
