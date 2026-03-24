@@ -1,12 +1,10 @@
-package com.nz.jnawintools.hook.v2.event;
+package com.nz.jnawintools.hook.event;
 
 import com.sun.jna.platform.win32.WinDef;
-import lombok.extern.slf4j.Slf4j;
 import org.jctools.queues.SpscArrayQueue;
 
 import java.util.function.Consumer;
 
-@Slf4j
 public final class LocationChangeBuffer {
 
     private final SpscArrayQueue<RawWinEvent> freeQ;

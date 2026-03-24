@@ -1,4 +1,4 @@
-package com.nz.jnawintools.hook.v2.event;
+package com.nz.jnawintools.hook.event;
 
 import com.sun.jna.platform.win32.WinDef;
 import lombok.Getter;
