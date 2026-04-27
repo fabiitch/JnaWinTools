@@ -4,6 +4,5 @@ import com.sun.jna.platform.win32.WinDef;
 
 public interface WindowChecker {
     boolean isWindow(WinDef.HWND hwnd);
-
      String getWindowName();
 }

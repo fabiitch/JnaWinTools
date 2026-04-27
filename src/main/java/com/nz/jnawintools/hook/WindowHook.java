@@ -52,6 +52,21 @@ public class WindowHook {
         this.criticalQueue = new CriticalWinEventQueue(CRITICAL_QUEUE_CAPACITY);
         this.locationBuffer = new LocationChangeBuffer(LOCATION_POOL_SIZE);
 
+        WinEventPumpThread pumpThread = getWinEventPumpThread();
+
+        this.pump = new WinEventPump(
+                criticalQueue,
+                locationBuffer,
+                pumpThread
+        );
+        pumpThread.setPump(pump);
+
+        this.pump.registerHandler(focusHandler);
+        this.pump.registerHandler(lifecycleHandler);
+        this.pump.registerHandler(moveHandler);
+    }
+
+    private WinEventPumpThread getWinEventPumpThread() {
         int flags = WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS;
 
         WinEventPumpThread pumpThread = new WinEventPumpThread(
@@ -73,17 +88,7 @@ public class WindowHook {
                 criticalQueue,
                 locationBuffer
         );
-
-        this.pump = new WinEventPump(
-                criticalQueue,
-                locationBuffer,
-                pumpThread
-        );
-        pumpThread.setPump(pump);
-
-        this.pump.registerHandler(focusHandler);
-        this.pump.registerHandler(lifecycleHandler);
-        this.pump.registerHandler(moveHandler);
+        return pumpThread;
     }
 
     public void start() {
