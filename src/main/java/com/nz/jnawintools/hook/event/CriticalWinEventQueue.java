@@ -12,7 +12,7 @@ public final class CriticalWinEventQueue {
     private final SpscArrayQueue<RawWinEvent> readyQ;
 
     @Getter
-    private int missFree,missReady, published, drained;
+    private int missFree, missReady, published, drained;
 
     public CriticalWinEventQueue(int capacity) {
         if (capacity < 2) {
