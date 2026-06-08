@@ -6,9 +6,7 @@ import com.nz.jnawintools.hook.event.dispatch.AbstractEventDispatcher;
 import com.nz.jnawintools.hook.window.WindowChecker;
 import lombok.extern.slf4j.Slf4j;
 
-import static com.nz.jnawintools.hook.cst.WinEventConstants.EVENT_OBJECT_LOCATIONCHANGE;
-import static com.nz.jnawintools.hook.cst.WinEventConstants.EVENT_SYSTEM_MINIMIZE_END;
-import static com.nz.jnawintools.hook.cst.WinEventConstants.EVENT_SYSTEM_MINIMIZE_START;
+import static com.nz.jnawintools.hook.cst.WinEventConstants.*;
 
 @Slf4j
 public class WindowMoveHandler extends BaseWindowEventHandler {
@@ -28,7 +26,9 @@ public class WindowMoveHandler extends BaseWindowEventHandler {
         int eventId = event.getEvent();
         return eventId == EVENT_OBJECT_LOCATIONCHANGE
                 || eventId == EVENT_SYSTEM_MINIMIZE_START
-                || eventId == EVENT_SYSTEM_MINIMIZE_END;
+                || eventId == EVENT_SYSTEM_MINIMIZE_END
+                ||eventId == EVENT_SYSTEM_MOVESIZESTART
+                || eventId == EVENT_SYSTEM_MOVESIZEEND;
     }
 
     @Override

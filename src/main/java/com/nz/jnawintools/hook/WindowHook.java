@@ -16,12 +16,7 @@ import lombok.Getter;
 import java.util.List;
 import java.util.function.Consumer;
 
-import static com.nz.jnawintools.hook.cst.WinEventConstants.EVENT_OBJECT_CREATE;
-import static com.nz.jnawintools.hook.cst.WinEventConstants.EVENT_OBJECT_LOCATIONCHANGE;
-import static com.nz.jnawintools.hook.cst.WinEventConstants.EVENT_SYSTEM_FOREGROUND;
-import static com.nz.jnawintools.hook.cst.WinEventConstants.EVENT_SYSTEM_MINIMIZE_END;
-import static com.nz.jnawintools.hook.cst.WinEventConstants.WINEVENT_OUTOFCONTEXT;
-import static com.nz.jnawintools.hook.cst.WinEventConstants.WINEVENT_SKIPOWNPROCESS;
+import static com.nz.jnawintools.hook.cst.WinEventConstants.*;
 
 public class WindowHook {
 
@@ -81,7 +76,13 @@ public class WindowHook {
                         new WinEventRange(
                                 "OBJECT",
                                 EVENT_OBJECT_CREATE,
-                                EVENT_OBJECT_LOCATIONCHANGE,
+                                EVENT_OBJECT_HIDE,
+                                flags
+                        ),
+                        new WinEventRange(
+                                "Move",
+                                EVENT_SYSTEM_MOVESIZESTART,
+                                EVENT_SYSTEM_MOVESIZEEND,
                                 flags
                         )
                 ),

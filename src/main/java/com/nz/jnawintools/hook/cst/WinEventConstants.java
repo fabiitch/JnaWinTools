@@ -12,8 +12,10 @@ public interface WinEventConstants {
     int EVENT_OBJECT_DESTROY = 0x8001; // 32769 Destruction d'un objet
     int EVENT_OBJECT_SHOW = 0x8002; // 32770 L'objet devient visible (affiché)
     int EVENT_OBJECT_HIDE = 0x8003; // 32771 L'objet devient invisible (caché)
-    int EVENT_OBJECT_LOCATIONCHANGE = 0x800B;
+    int EVENT_OBJECT_LOCATIONCHANGE = 0x800B;  // 32779 (SOURIS BOUGE)
 
+    int EVENT_SYSTEM_MOVESIZESTART = 0x000A; // 10  Début déplacement / redimensionnement fenêtre
+    int EVENT_SYSTEM_MOVESIZEEND   = 0x000B; // 11  Fin déplacement / redimensionnement fenêtre
     int EVENT_SYSTEM_FOREGROUND = 0x0003;
     int EVENT_SYSTEM_MINIMIZE_END = 23;
     int EVENT_SYSTEM_MINIMIZE_START = 22;
