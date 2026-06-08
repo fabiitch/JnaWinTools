@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static com.nz.jnawintools.hook.cst.WinEventConstants.OBJID_WINDOW;
+
 @Slf4j
 public class WinEventPumpThread extends Thread {
 
@@ -53,12 +55,17 @@ public class WinEventPumpThread extends Thread {
         running.set(true);
 
         try {
-            for (WinEventRange range : ranges) {
+            int rangeCount = ranges.size();
+            for (int i = 0; i < rangeCount; i++) {
+                WinEventRange range = ranges.get(i);
+
                 WinUser.WinEventProc proc = (hWinEventHook, event, hwnd, idObject, idChild, dwEventThread, dwmsEventTime) -> {
                     try {
                         int eventCode = event.intValue();
-
                         if (eventCode == WinEventConstants.EVENT_OBJECT_LOCATIONCHANGE) {
+                            if (idObject.intValue() != OBJID_WINDOW || idChild.intValue() != 0) {
+                                return;
+                            }
                             locationBuffer.publish(
                                     eventCode,
                                     hwnd,
@@ -122,6 +129,7 @@ public class WinEventPumpThread extends Thread {
         WinUser.MSG msg = new WinUser.MSG();
         int result;
         while ((result = User32.INSTANCE.GetMessage(msg, null, 0, 0)) > 0) {
+            System.out.println("passe");
             User32.INSTANCE.TranslateMessage(msg);
             User32.INSTANCE.DispatchMessage(msg);
         }
