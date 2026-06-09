@@ -15,7 +15,8 @@ public class WinEventRouter {
     }
 
     public void route(RawWinEvent event) {
-        for (BaseWindowEventHandler handler : handlers) {
+        for(int i =0 , n = handlers.size(); i < n; i++) {
+            BaseWindowEventHandler handler = handlers.get(i);
             if (handler.supports(event)) {
                 handler.handle(event);
             }
