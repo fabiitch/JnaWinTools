@@ -3,19 +3,23 @@ package com.nz.jnawintools.hook.pump;
 import com.nz.jnawintools.hook.WinEventRouter;
 import com.nz.jnawintools.hook.event.CriticalWinEventQueue;
 import com.nz.jnawintools.hook.event.LocationChangeBuffer;
+import com.nz.jnawintools.hook.event.RawWinEvent;
 import com.nz.jnawintools.hook.handler.BaseWindowEventHandler;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
+import java.util.function.Consumer;
 
 @Slf4j
-public class WinEventPump {
+public class WinEventPump implements Runnable {
 
     private final CriticalWinEventQueue criticalQueue;
     private final LocationChangeBuffer locationBuffer;
     private final WinEventPumpThread pumpThread;
     private final WinEventRouter router;
+    private final Consumer<RawWinEvent> criticalConsumer = new CriticalEventConsumer();
+    private final Consumer<RawWinEvent> locationConsumer = new LocationEventConsumer();
 
     private final AtomicBoolean running = new AtomicBoolean(false);
 
@@ -43,33 +47,21 @@ public class WinEventPump {
         pumpThread.setPump(this);
         pumpThread.startAndWait();
 
-        consumerThread = new Thread(() -> {
-            while (running.get()) {
-
-                int drainedCritical = criticalQueue.drainTo(event -> {
-                    try {
-                        router.route(event);
-                    } catch (Throwable t) {
-                        log.error("Critical routing failed", t);
-                    }
-                }, 1024);
-
-                boolean drainedLocation = locationBuffer.drainTo(event -> {
-                    try {
-                        router.route(event);
-                    } catch (Throwable t) {
-                        log.error("Location routing failed", t);
-                    }
-                });
-
-                if (drainedCritical == 0 && !drainedLocation) {
-                    LockSupport.parkNanos(1_000_000L);
-                }
-            }
-        }, "WinEventConsumer");
-
+        consumerThread = new Thread(this, "WinEventConsumer");
         consumerThread.setDaemon(true);
         consumerThread.start();
+    }
+
+    @Override
+    public void run() {
+        while (running.get()) {
+            int drainedCritical = criticalQueue.drainTo(criticalConsumer, 1024);
+            boolean drainedLocation = locationBuffer.drainTo(locationConsumer);
+
+            if (drainedCritical == 0 && !drainedLocation) {
+                LockSupport.parkNanos(1_000_000L);
+            }
+        }
     }
 
     public void stop() {
@@ -84,5 +76,27 @@ public class WinEventPump {
 
     public void registerHandler(BaseWindowEventHandler handler) {
         router.register(handler);
+    }
+
+    private final class CriticalEventConsumer implements Consumer<RawWinEvent> {
+        @Override
+        public void accept(RawWinEvent event) {
+            try {
+                router.route(event);
+            } catch (Throwable t) {
+                log.error("Critical routing failed", t);
+            }
+        }
+    }
+
+    private final class LocationEventConsumer implements Consumer<RawWinEvent> {
+        @Override
+        public void accept(RawWinEvent event) {
+            try {
+                router.route(event);
+            } catch (Throwable t) {
+                log.error("Location routing failed", t);
+            }
+        }
     }
 }
