@@ -38,7 +38,9 @@ public class WindowMinMaxHandler extends BaseWindowEventHandler {
 
         String windowTitle = window64Helper.getName(event.getHwnd());
         if (!windowToTrackChecker.isWindow(event.getHwnd())) {
-            log.trace("[{}] ignored event={} for non tracked window={}", name(), event.getEvent(), windowTitle);
+            if(log.isTraceEnabled()){
+                log.trace("[{}] ignored event={} for non tracked window={}", name(), event.getEvent(), windowTitle);
+            }
             return;
         }
 
