@@ -24,7 +24,7 @@ public final class LocationChangeBuffer {
         }
     }
 
-    public void publish(int event,
+    public void publish(long event,
                         WinDef.HWND hwnd,
                         int idObject,
                         int idChild,

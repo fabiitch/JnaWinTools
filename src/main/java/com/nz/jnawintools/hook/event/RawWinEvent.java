@@ -10,14 +10,14 @@ import lombok.Setter;
 @NoArgsConstructor
 public final class RawWinEvent {
 
-    private int event;
+    private long event;
     private WinDef.HWND hwnd;
     private int idObject;
     private int idChild;
     private int eventThread;
     private int eventTime;
 
-    public void set(int event,
+    public void set(long event,
                     WinDef.HWND hwnd,
                     int idObject,
                     int idChild,
