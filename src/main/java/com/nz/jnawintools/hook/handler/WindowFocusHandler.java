@@ -22,7 +22,9 @@ public class WindowFocusHandler extends BaseWindowEventHandler {
     public void init() {
         WinDef.HWND foregroundWindow = window64Helper.getForeGroundWindow();
         hasFocus = windowToTrackChecker.isWindow(foregroundWindow);
-        log.trace("[{}] initial focus state={} for hwnd={}", name(), hasFocus, foregroundWindow);
+        if (log.isTraceEnabled()) {
+            log.trace("[{}] initial focus state={} for hwnd={}", name(), hasFocus, foregroundWindow);
+        }
     }
 
     @Override
@@ -38,8 +40,10 @@ public class WindowFocusHandler extends BaseWindowEventHandler {
     @Override
     public void handle(RawWinEvent event) {
         boolean trackedWindowHasFocus = windowToTrackChecker.isWindow(event.getHwnd());
-        log.trace("[{}] event={} hwnd={} hasFocusBefore={} trackedWindowHasFocus={}",
-                name(), event.getEvent(), event.getHwnd(), hasFocus, trackedWindowHasFocus);
+        if (log.isTraceEnabled()) {
+            log.trace("[{}] event={} hwnd={} hasFocusBefore={} trackedWindowHasFocus={}",
+                    name(), event.getEvent(), event.getHwnd(), hasFocus, trackedWindowHasFocus);
+        }
 
         WindowEventAction action = null;
         if (hasFocus && !trackedWindowHasFocus) {
@@ -50,7 +54,9 @@ public class WindowFocusHandler extends BaseWindowEventHandler {
 
         hasFocus = trackedWindowHasFocus;
         if (action != null) {
-            log.trace("[{}] dispatch action={}", name(), action);
+            if (log.isTraceEnabled()) {
+                log.trace("[{}] dispatch action={}", name(), action);
+            }
             dispatch(action);
         }
     }

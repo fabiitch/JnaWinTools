@@ -30,24 +30,30 @@ public class WindowMinMaxHandler extends BaseWindowEventHandler {
 
     @Override
     public void handle(RawWinEvent event) {
-        if (log.isTraceEnabled() && !event.isWindowObject()) {
-            log.trace("[{}] ignored event={} (idObject={}, idChild={})",
-                    name(), event.getEvent(), event.getIdObject(), event.getIdChild());
+        if (!event.isWindowObject()) {
+            if (log.isTraceEnabled()) {
+                log.trace("[{}] ignored event={} (idObject={}, idChild={})",
+                        name(), event.getEvent(), event.getIdObject(), event.getIdChild());
+            }
             return;
         }
 
         String windowTitle = window64Helper.getName(event.getHwnd());
         if (!windowToTrackChecker.isWindow(event.getHwnd())) {
-            if(log.isTraceEnabled()){
+            if (log.isTraceEnabled()) {
                 log.trace("[{}] ignored event={} for non tracked window={}", name(), event.getEvent(), windowTitle);
             }
             return;
         }
 
         if (event.getEvent() == EVENT_SYSTEM_MINIMIZE_START) {
-            log.trace("[{}] tracked window minimize start for hwnd={} title={}", name(), event.getHwnd(), windowTitle);
+            if (log.isTraceEnabled()) {
+                log.trace("[{}] tracked window minimize start for hwnd={} title={}", name(), event.getHwnd(), windowTitle);
+            }
         } else if (event.getEvent() == EVENT_SYSTEM_MINIMIZE_END) {
-            log.trace("[{}] tracked window minimize end for hwnd={} title={}", name(), event.getHwnd(), windowTitle);
+            if (log.isTraceEnabled()) {
+                log.trace("[{}] tracked window minimize end for hwnd={} title={}", name(), event.getHwnd(), windowTitle);
+            }
         }
     }
 }
