@@ -30,7 +30,7 @@ public class WindowMinMaxHandler extends BaseWindowEventHandler {
 
     @Override
     public void handle(RawWinEvent event) {
-        if (!event.isWindowObject()) {
+        if (log.isTraceEnabled() && !event.isWindowObject()) {
             log.trace("[{}] ignored event={} (idObject={}, idChild={})",
                     name(), event.getEvent(), event.getIdObject(), event.getIdChild());
             return;

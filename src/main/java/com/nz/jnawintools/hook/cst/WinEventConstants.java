@@ -11,7 +11,15 @@ public interface WinEventConstants {
     int EVENT_OBJECT_CREATE = 0x8000; // 32768 Création d'un objet (fenêtre, control, etc)
     int EVENT_OBJECT_DESTROY = 0x8001; // 32769 Destruction d'un objet
     int EVENT_OBJECT_SHOW = 0x8002; // 32770 L'objet devient visible (affiché)
-    int EVENT_OBJECT_HIDE = 0x8003; // 32771 L'objet devient invisible (caché)
+    int EVENT_OBJECT_HIDE            = 0x8003; // 32771
+    int EVENT_OBJECT_REORDER         = 0x8004; // 32772
+    int EVENT_OBJECT_FOCUS           = 0x8005; // 32773
+    int EVENT_OBJECT_SELECTION       = 0x8006; // 32774
+    int EVENT_OBJECT_SELECTIONADD    = 0x8007; // 32775
+    int EVENT_OBJECT_SELECTIONREMOVE = 0x8008; // 32776
+    int EVENT_OBJECT_SELECTIONWITHIN = 0x8009; // 32777
+    int EVENT_OBJECT_STATECHANGE     = 0x800A; // 32778
+
     int EVENT_OBJECT_LOCATIONCHANGE = 0x800B;  // 32779 (SOURIS BOUGE)
 
     int EVENT_SYSTEM_MOVESIZESTART = 0x000A; // 10  Début déplacement / redimensionnement fenêtre
