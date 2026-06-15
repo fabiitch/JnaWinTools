@@ -31,7 +31,7 @@ public class WindowVisibilityHandler extends BaseWindowEventHandler {
     @Override
     public void handle(RawWinEvent event) {
         if (!event.isWindowObject()) {
-            if(log.isTraceEnabled()){
+            if (log.isTraceEnabled()) {
                 log.trace("[{}] ignored event={} (idObject={}, idChild={})", name(), event.getEvent(), event.getIdObject(), event.getIdChild());
             }
             return;
@@ -39,20 +39,28 @@ public class WindowVisibilityHandler extends BaseWindowEventHandler {
 
         String windowTitle = window64Helper.getName(event.getHwnd());
         if (!windowToTrackChecker.isWindow(event.getHwnd())) {
-            log.trace("[{}] ignored event={} for non tracked window={}", name(), event.getEvent(), windowTitle);
+            if (log.isTraceEnabled()) {
+                log.trace("[{}] ignored event={} for non tracked window={}", name(), event.getEvent(), windowTitle);
+            }
             return;
         }
 
         if (window64Helper.isIconic(event.getHwnd())) {
-            log.trace("[{}] ignored visibility event={} because window is iconic (hwnd={} title={})",
-                    name(), event.getEvent(), event.getHwnd(), windowTitle);
+            if (log.isTraceEnabled()) {
+                log.trace("[{}] ignored visibility event={} because window is iconic (hwnd={} title={})",
+                        name(), event.getEvent(), event.getHwnd(), windowTitle);
+            }
             return;
         }
 
         if (event.getEvent() == EVENT_OBJECT_SHOW) {
-            log.trace("[{}] tracked window show event for hwnd={} title={}", name(), event.getHwnd(), windowTitle);
+            if (log.isTraceEnabled()) {
+                log.trace("[{}] tracked window show event for hwnd={} title={}", name(), event.getHwnd(), windowTitle);
+            }
         } else if (event.getEvent() == EVENT_OBJECT_HIDE) {
-            log.trace("[{}] tracked window hide event for hwnd={} title={}", name(), event.getHwnd(), windowTitle);
+            if (log.isTraceEnabled()) {
+                log.trace("[{}] tracked window hide event for hwnd={} title={}", name(), event.getHwnd(), windowTitle);
+            }
         }
     }
 }

@@ -31,21 +31,29 @@ public class WindowLifecycleHandler extends BaseWindowEventHandler {
     @Override
     public void handle(RawWinEvent event) {
         if (!event.isWindowObject()) {
-            log.trace("[{}] ignored event={} (idObject={}, idChild={})",
-                    name(), event.getEvent(), event.getIdObject(), event.getIdChild());
+            if (log.isTraceEnabled()) {
+                log.trace("[{}] ignored event={} (idObject={}, idChild={})",
+                        name(), event.getEvent(), event.getIdObject(), event.getIdChild());
+            }
             return;
         }
 
         if (!windowToTrackChecker.isWindow(event.getHwnd())) {
-            log.trace("[{}] ignored event={} for non tracked hwnd={}", name(), event.getEvent(), event.getHwnd());
+            if (log.isTraceEnabled()) {
+                log.trace("[{}] ignored event={} for non tracked hwnd={}", name(), event.getEvent(), event.getHwnd());
+            }
             return;
         }
 
         if (event.getEvent() == EVENT_OBJECT_CREATE) {
-            log.trace("[{}] dispatch action={} for hwnd={}", name(), WindowEventAction.Created, event.getHwnd());
+            if (log.isTraceEnabled()) {
+                log.trace("[{}] dispatch action={} for hwnd={}", name(), WindowEventAction.Created, event.getHwnd());
+            }
             dispatch(WindowEventAction.Created);
         } else if (event.getEvent() == EVENT_OBJECT_DESTROY) {
-            log.trace("[{}] dispatch action={} for hwnd={}", name(), WindowEventAction.Closed, event.getHwnd());
+            if (log.isTraceEnabled()) {
+                log.trace("[{}] dispatch action={} for hwnd={}", name(), WindowEventAction.Closed, event.getHwnd());
+            }
             dispatch(WindowEventAction.Closed);
         }
     }
