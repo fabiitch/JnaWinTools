@@ -27,14 +27,14 @@ public class WindowMoveHandler extends BaseWindowEventHandler {
         return eventId == EVENT_OBJECT_LOCATIONCHANGE
                 || eventId == EVENT_SYSTEM_MINIMIZE_START
                 || eventId == EVENT_SYSTEM_MINIMIZE_END
-                ||eventId == EVENT_SYSTEM_MOVESIZESTART
+                || eventId == EVENT_SYSTEM_MOVESIZESTART
                 || eventId == EVENT_SYSTEM_MOVESIZEEND;
     }
 
     @Override
     public void handle(RawWinEvent event) {
         if (!event.isWindowObject()) {
-            if(log.isTraceEnabled()){
+            if (log.isTraceEnabled()) {
                 log.trace("[{}] ignored event={} (idObject={}, idChild={})",
                         name(), event.getEvent(), event.getIdObject(), event.getIdChild());
             }
@@ -48,7 +48,7 @@ public class WindowMoveHandler extends BaseWindowEventHandler {
             return;
         }
 
-        if(log.isTraceEnabled()){
+        if (log.isTraceEnabled()) {
             log.trace("[{}] dispatch action={} for hwnd={} event={}",
                     name(), WindowEventAction.Move, event.getHwnd(), event.getEvent());
         }
