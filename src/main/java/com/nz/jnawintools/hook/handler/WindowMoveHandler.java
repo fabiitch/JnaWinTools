@@ -34,17 +34,24 @@ public class WindowMoveHandler extends BaseWindowEventHandler {
     @Override
     public void handle(RawWinEvent event) {
         if (!event.isWindowObject()) {
-            log.trace("[{}] ignored event={} (idObject={}, idChild={})",
-                    name(), event.getEvent(), event.getIdObject(), event.getIdChild());
+            if(log.isTraceEnabled()){
+                log.trace("[{}] ignored event={} (idObject={}, idChild={})",
+                        name(), event.getEvent(), event.getIdObject(), event.getIdChild());
+            }
+
             return;
         }
         if (!windowToTrackChecker.isWindow(event.getHwnd())) {
-            log.trace("[{}] ignored event={} for non tracked hwnd={}", name(), event.getEvent(), event.getHwnd());
+            if (log.isTraceEnabled()) {
+                log.trace("[{}] ignored event={} for non tracked hwnd={}", name(), event.getEvent(), event.getHwnd());
+            }
             return;
         }
 
-        log.trace("[{}] dispatch action={} for hwnd={} event={}",
-                name(), WindowEventAction.Move, event.getHwnd(), event.getEvent());
+        if(log.isTraceEnabled()){
+            log.trace("[{}] dispatch action={} for hwnd={} event={}",
+                    name(), WindowEventAction.Move, event.getHwnd(), event.getEvent());
+        }
         dispatch(WindowEventAction.Move);
     }
 }

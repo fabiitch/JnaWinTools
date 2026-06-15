@@ -31,7 +31,9 @@ public class WindowVisibilityHandler extends BaseWindowEventHandler {
     @Override
     public void handle(RawWinEvent event) {
         if (!event.isWindowObject()) {
-            log.trace("[{}] ignored event={} (idObject={}, idChild={})", name(), event.getEvent(), event.getIdObject(), event.getIdChild());
+            if(log.isTraceEnabled()){
+                log.trace("[{}] ignored event={} (idObject={}, idChild={})", name(), event.getEvent(), event.getIdObject(), event.getIdChild());
+            }
             return;
         }
 
