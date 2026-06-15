@@ -61,7 +61,7 @@ public class WinEventPumpThread extends Thread {
 
                 WinUser.WinEventProc proc = (hWinEventHook, event, hwnd, idObject, idChild, dwEventThread, dwmsEventTime) -> {
                     try {
-                        int eventCode = event.intValue();
+                        long eventCode = event.intValue();
                         if (eventCode == WinEventConstants.EVENT_OBJECT_LOCATIONCHANGE) {
                             if (idObject.intValue() != OBJID_WINDOW || idChild.intValue() != 0) {
                                 return;
