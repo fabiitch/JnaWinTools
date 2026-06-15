@@ -109,12 +109,14 @@ public class WinEventPumpThread extends Thread {
                 callbacks.add(proc);
                 hookHandles.add(handle);
 
-                log.trace("Installed hook [{}] handle=0x{} min={} max={} flags=0x{}",
-                        range.name(),
-                        Long.toHexString(Pointer.nativeValue(handle.getPointer())),
-                        range.eventMin(),
-                        range.eventMax(),
-                        Integer.toHexString(range.flags()));
+                if (log.isTraceEnabled()) {
+                    log.trace("Installed hook [{}] handle=0x{} min={} max={} flags=0x{}",
+                            range.name(),
+                            Long.toHexString(Pointer.nativeValue(handle.getPointer())),
+                            range.eventMin(),
+                            range.eventMax(),
+                            Integer.toHexString(range.flags()));
+                }
             }
 
         } catch (Throwable t) {
