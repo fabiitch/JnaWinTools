@@ -25,8 +25,10 @@ public interface WinEventConstants {
     int EVENT_SYSTEM_MOVESIZESTART = 0x000A; // 10  Début déplacement / redimensionnement fenêtre
     int EVENT_SYSTEM_MOVESIZEEND   = 0x000B; // 11  Fin déplacement / redimensionnement fenêtre
     int EVENT_SYSTEM_FOREGROUND = 0x0003;
-    int EVENT_SYSTEM_MINIMIZE_END = 23;
+
     int EVENT_SYSTEM_MINIMIZE_START = 22;
+    int EVENT_SYSTEM_MINIMIZE_END = 23;
+
 
 
     int OBJID_WINDOW = 0;
