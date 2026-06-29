@@ -59,7 +59,9 @@ public class WinEventPumpThread extends Thread {
             for (int i = 0; i < rangeCount; i++) {
                 WinEventRange range = ranges.get(i);
 
-                WinUser.WinEventProc proc = (hWinEventHook, event, hwnd, idObject, idChild, dwEventThread, dwmsEventTime) -> {
+                WinUser.WinEventProc proc = (hWinEventHook, event,
+                                             hwnd, idObject, idChild,
+                                             dwEventThread, dwmsEventTime) -> {
                     try {
                         int eventCode = event.intValue();
                         if (eventCode == WinEventConstants.EVENT_OBJECT_LOCATIONCHANGE) {
