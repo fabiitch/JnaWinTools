@@ -1,6 +1,8 @@
 package com.nz.jnawintools.hook.cst;
 
 public interface WinEventConstants {
+  int WM_APP = 0x8000;
+
     int WINEVENT_OUTOFCONTEXT = 0x0000; // Callback dans le thread du caller (pas d’injection)
     int WINEVENT_SKIPOWNTHREAD = 0x0001; // Ignore les events du thread appelant
     int WINEVENT_SKIPOWNPROCESS = 0x0002; // Ignore les events du process appelant

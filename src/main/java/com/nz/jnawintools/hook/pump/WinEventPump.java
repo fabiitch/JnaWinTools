@@ -1,6 +1,6 @@
 package com.nz.jnawintools.hook.pump;
 
-import com.nz.jnawintools.hook.WinEventRouter;
+import com.nz.jnawintools.hook.WinEventHandlerRouter;
 import com.nz.jnawintools.hook.event.CriticalWinEventQueue;
 import com.nz.jnawintools.hook.event.LocationChangeBuffer;
 import com.nz.jnawintools.hook.event.RawWinEvent;
@@ -17,7 +17,7 @@ public class WinEventPump implements Runnable {
     private final CriticalWinEventQueue criticalQueue;
     private final LocationChangeBuffer locationBuffer;
     private final WinEventPumpThread pumpThread;
-    private final WinEventRouter router;
+    private final WinEventHandlerRouter router;
     private final Consumer<RawWinEvent> criticalConsumer = new CriticalEventConsumer();
     private final Consumer<RawWinEvent> locationConsumer = new LocationEventConsumer();
 
@@ -31,7 +31,7 @@ public class WinEventPump implements Runnable {
         this.criticalQueue = criticalQueue;
         this.locationBuffer = locationBuffer;
         this.pumpThread = pumpThread;
-        this.router = new WinEventRouter();
+        this.router = new WinEventHandlerRouter();
     }
 
     public void signalWork() {

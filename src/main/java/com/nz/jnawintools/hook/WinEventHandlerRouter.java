@@ -6,7 +6,7 @@ import com.nz.jnawintools.hook.handler.BaseWindowEventHandler;
 import java.util.ArrayList;
 import java.util.List;
 
-public class WinEventRouter {
+public class WinEventHandlerRouter {
 
     private final List<BaseWindowEventHandler> handlers = new ArrayList<>();
 
