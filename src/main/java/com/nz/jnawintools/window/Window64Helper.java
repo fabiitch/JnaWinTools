@@ -86,6 +86,14 @@ public class Window64Helper {
                 .isSuccess();
     }
 
+    public boolean setChromaKeyTransparency(String windowName) {
+        return withWindowName(windowName,
+                "setChromaKeyTransparency",
+                Window64Utils::setChromaKeyTransparency,
+                WinApiResult::failure)
+                .isSuccess();
+    }
+
     public boolean setWindowPosition(String windowName, int x, int y) {
         return withWindowName(
                 windowName,
@@ -119,6 +127,7 @@ public class Window64Helper {
                 WinApiResult::failure)
                 .isSuccess();
     }
+
     public boolean showWindow(String windowName) {
         return withWindowName(windowName,
                 "showWindow",
@@ -135,10 +144,43 @@ public class Window64Helper {
                 .isSuccess();
     }
 
+    public boolean setClickThroughReceiver(String windowName) {
+        return withWindowName(windowName,
+                "setClickThroughReceiver",
+                Window64Utils::setClickThrough,
+                WinApiResult::failure)
+                .isSuccess();
+    }
+
     public boolean setClickThrough(String windowName) {
         return withWindowName(windowName,
                 "setClickThrough",
                 Window64Utils::setClickThrough,
+                WinApiResult::failure)
+                .isSuccess();
+    }
+
+    public boolean setToolWindow(String windowName, boolean enabled) {
+        return withWindowName(windowName,
+                "setToolWindow",
+                hwnd -> Window64Utils.setToolWindow(hwnd, enabled),
+                WinApiResult::failure)
+                .isSuccess();
+    }
+
+    public boolean setAppWindow(String windowName, boolean enabled) {
+        return withWindowName(windowName,
+                "setAppWindow",
+                hwnd -> Window64Utils.setAppWindow(hwnd, enabled),
+                WinApiResult::failure)
+                .isSuccess();
+    }
+
+    
+    public boolean setNoRedirectionBitmap(String windowName, boolean enabled) {
+        return withWindowName(windowName,
+                "setNoRedirectionBitmap",
+                hwnd -> Window64Utils.setNoRedirectionBitmap(hwnd, enabled),
                 WinApiResult::failure)
                 .isSuccess();
     }
