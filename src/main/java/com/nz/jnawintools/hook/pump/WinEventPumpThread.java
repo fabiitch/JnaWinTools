@@ -133,7 +133,6 @@ public class WinEventPumpThread extends Thread {
         WinUser.MSG msg = new WinUser.MSG();
         int result;
         while ((result = User32.INSTANCE.GetMessage(msg, null, 0, 0)) > 0) {
-            System.out.println("passe");
             User32.INSTANCE.TranslateMessage(msg);
             User32.INSTANCE.DispatchMessage(msg);
         }

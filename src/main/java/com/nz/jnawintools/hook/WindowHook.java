@@ -112,4 +112,12 @@ public class WindowHook {
     public void clearListeners() {
         dispatcher.clear();
     }
+
+    public Thread getHookThread() {
+        return pump.getPumpThread();
+    }
+
+    public Thread getConsumerThread() {
+        return pump.getConsumerThread();
+    }
 }
