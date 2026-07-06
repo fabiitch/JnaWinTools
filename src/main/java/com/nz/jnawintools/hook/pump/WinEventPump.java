@@ -5,6 +5,7 @@ import com.nz.jnawintools.hook.event.CriticalWinEventQueue;
 import com.nz.jnawintools.hook.event.LocationChangeBuffer;
 import com.nz.jnawintools.hook.event.RawWinEvent;
 import com.nz.jnawintools.hook.handler.BaseWindowEventHandler;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -16,6 +17,7 @@ public class WinEventPump implements Runnable {
 
     private final CriticalWinEventQueue criticalQueue;
     private final LocationChangeBuffer locationBuffer;
+    @Getter
     private final WinEventPumpThread pumpThread;
     private final WinEventHandlerRouter router;
     private final Consumer<RawWinEvent> criticalConsumer = new CriticalEventConsumer();
@@ -23,6 +25,7 @@ public class WinEventPump implements Runnable {
 
     private final AtomicBoolean running = new AtomicBoolean(false);
 
+    @Getter
     private volatile Thread consumerThread;
 
     public WinEventPump(CriticalWinEventQueue criticalQueue,
