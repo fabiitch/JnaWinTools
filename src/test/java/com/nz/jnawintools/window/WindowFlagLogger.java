@@ -1,6 +1,5 @@
-package com.nz.jnawintools;
+package com.nz.jnawintools.window;
 
-import com.nz.jnawintools.window.Window64Utils;
 import com.nz.jnawintools.window.result.HwndResult;
 import com.nz.jnawintools.window.result.WindowStyleResult;
 import com.sun.jna.Native;
@@ -11,11 +10,7 @@ import com.sun.jna.win32.StdCallLibrary;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
-public class WindowsFlagTest {
-
-    private static final String WINDOW_NAME_PROPERTY = "windowName";
-    private static final String WINDOW_NAME_ENV = "WINDOW_NAME";
-    private static final String DEFAULT_WINDOW_NAME = "Calculatrice";
+public class WindowFlagLogger {
 
     private static final int GCL_STYLE = -26;
 
@@ -89,22 +84,10 @@ public class WindowsFlagTest {
     private static final long CS_GLOBALCLASS = 0x4000L;
     private static final long CS_DROPSHADOW = 0x00020000L;
 
-    @Test
-    public void testOverlay() {
-        printWindowFlagsByName("NzCore");
-    }
-
-    @Test
-    public void testPresentMoon() {
-        printWindowFlagsByName("P2C#OVERLAY");
-    }
-
-
-    public void printWindowFlagsByName(String windowName) {
+    public static void printWindowFlagsByName(String windowName) {
         HwndResult hwndResult = Window64Utils.getHwnd(windowName);
         Assumptions.assumeTrue(hwndResult.isSuccess(),
-                "Window not found: " + windowName + ". Use -D" + WINDOW_NAME_PROPERTY
-                        + "=\"exact title\" or " + WINDOW_NAME_ENV + "=exact title");
+                "Window not found: " + windowName);
 
         WindowStyleResult exStyleResult = Window64Utils.getExStyle(hwndResult.getHwnd());
         WindowStyleResult styleResult = Window64Utils.getNormalStyle(hwndResult.getHwnd());
