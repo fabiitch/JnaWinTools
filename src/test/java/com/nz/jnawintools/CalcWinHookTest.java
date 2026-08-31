@@ -6,17 +6,14 @@ import com.nz.jnawintools.hook.event.dispatch.SyncEventDispatcher;
 import com.nz.jnawintools.hook.window.WindowTitleEqualsChecker;
 import com.sun.jna.platform.win32.User32;
 import com.sun.jna.platform.win32.WinUser;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
 
 import java.util.function.Consumer;
-@Disabled
-public class WindowHookTest {
 
-    @Test
-    public void testHook() throws InterruptedException {
+public class CalcWinHookTest {
+
+    public static void main(String[] args) throws InterruptedException {
         WindowHook windowHook = new WindowHook(WindowTitleEqualsChecker.get("Calculatrice"),
-            new SyncEventDispatcher<>());
+                new SyncEventDispatcher<>());
 
         windowHook.addListener(new Consumer<WindowEventAction>() {
             int inc = 0;
@@ -39,4 +36,5 @@ public class WindowHookTest {
             }
         }
     }
+
 }
