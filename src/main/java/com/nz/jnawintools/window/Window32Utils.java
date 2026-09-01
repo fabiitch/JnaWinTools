@@ -1,127 +1,127 @@
 package com.nz.jnawintools.window;
 
 import com.nz.jnawintools.enums.WindowDisplayMode;
+import com.nz.jnawintools.win32.User32;
+import com.nz.jnawintools.win32.WinUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.nz.jnawintools.win32.User32Extended;
-import com.sun.jna.Native;
-import com.sun.jna.Pointer;
-import com.sun.jna.platform.win32.User32;
-import com.sun.jna.platform.win32.WinDef;
-import com.sun.jna.platform.win32.WinUser;
 
 import java.awt.*;
+import java.lang.foreign.Arena;
 
+/**
+ * Legacy convenience helpers kept for compatibility. Style access uses the x64
+ * {@code GetWindowLongPtrW}/{@code SetWindowLongPtrW} entry points (valid on Windows/JVM x64);
+ * window styles occupy the low 32 bits of the {@code LONG_PTR} value.
+ */
 public class Window32Utils {
-
-    private final static User32Extended USER_32_EXTENDED = User32Extended.INSTANCE;
 
     public static final Logger logger = LoggerFactory.getLogger(Window32Utils.class);
 
+    private static long findWindow(String windowName) {
+        try (Arena arena = Arena.ofConfined()) {
+            return User32.findWindow(arena, windowName);
+        }
+    }
+
     public static boolean isActive(String windowName) {
-        WinDef.HWND hwnd = User32.INSTANCE.FindWindow(null, windowName);
-        return hwnd != null;
+        return findWindow(windowName) != 0L;
     }
 
     public static void enableTransparency(String windowName) {
-        WinDef.HWND hwnd = User32.INSTANCE.FindWindow(null, windowName);
-        if (hwnd != null) {
-            int exStyle = User32.INSTANCE.GetWindowLong(hwnd, WinUser.GWL_EXSTYLE);
-            User32.INSTANCE.SetWindowLong(hwnd, WinUser.GWL_EXSTYLE, exStyle | 0x00080000); // WS_EX_LAYERED
-            User32.INSTANCE.SetLayeredWindowAttributes(hwnd, 0, (byte) 255, 2);
+        long hwnd = findWindow(windowName);
+        if (hwnd != 0L) {
+            long exStyle = User32.getWindowLongPtr(hwnd, WinUser.GWL_EXSTYLE);
+            User32.setWindowLongPtr(hwnd, WinUser.GWL_EXSTYLE, exStyle | WinUser.WS_EX_LAYERED);
+            User32.setLayeredWindowAttributes(hwnd, 0, (byte) 255, WinUser.LWA_ALPHA);
         } else {
-            logger.error( "enableTransparency window={} not found", windowName);
+            logger.error("enableTransparency window={} not found", windowName);
         }
     }
 
     public static void setFullScreenBorderLess(String windowName) {
-        WinDef.HWND hwnd = User32.INSTANCE.FindWindow(null, windowName);
-        if (hwnd != null) {
-            // Retirer bordures (style fenêtré)
-            int style = User32.INSTANCE.GetWindowLong(hwnd, WinUser.GWL_STYLE);
+        long hwnd = findWindow(windowName);
+        if (hwnd != 0L) {
+            // Retirer bordures (style fenetre)
+            long style = User32.getWindowLongPtr(hwnd, WinUser.GWL_STYLE);
             style &= ~WinUser.WS_OVERLAPPEDWINDOW;
             style |= WinUser.WS_POPUP | WinUser.WS_VISIBLE;
-            User32.INSTANCE.SetWindowLong(hwnd, WinUser.GWL_STYLE, style);
-            logger.trace( "setFullScreenBorderLess() window={} ok !", windowName);
+            User32.setWindowLongPtr(hwnd, WinUser.GWL_STYLE, style);
+            logger.trace("setFullScreenBorderLess() window={} ok !", windowName);
         } else {
-            logger.error( "setFullScreenBorderLess() window={} not found", windowName);
+            logger.error("setFullScreenBorderLess() window={} not found", windowName);
         }
     }
 
     public static void setClickThrough(String windowName) {
-        WinDef.HWND hwnd = User32.INSTANCE.FindWindow(null, windowName);
-        if (hwnd != null) {
-            int exStyle = User32.INSTANCE.GetWindowLong(hwnd, WinUser.GWL_EXSTYLE);
+        long hwnd = findWindow(windowName);
+        if (hwnd != 0L) {
+            long exStyle = User32.getWindowLongPtr(hwnd, WinUser.GWL_EXSTYLE);
             exStyle |= WinUser.WS_EX_LAYERED | WinUser.WS_EX_TRANSPARENT;
-            User32.INSTANCE.SetWindowLong(hwnd, WinUser.GWL_EXSTYLE, exStyle);
-            logger.trace( "setClickThrough() window={} ok !", windowName);
+            User32.setWindowLongPtr(hwnd, WinUser.GWL_EXSTYLE, exStyle);
+            logger.trace("setClickThrough() window={} ok !", windowName);
         } else {
-            logger.error( "setClickThrough() window={} not found", windowName);
+            logger.error("setClickThrough() window={} not found", windowName);
         }
     }
 
     public static void setClickThroughReceiver(String windowName) {
-        WinDef.HWND hwnd = User32.INSTANCE.FindWindow(null, windowName);
-        if (hwnd != null) {
-            int exStyle = User32.INSTANCE.GetWindowLong(hwnd, WinUser.GWL_EXSTYLE);
+        long hwnd = findWindow(windowName);
+        if (hwnd != 0L) {
+            long exStyle = User32.getWindowLongPtr(hwnd, WinUser.GWL_EXSTYLE);
             exStyle &= ~WinUser.WS_EX_TRANSPARENT;
-            User32.INSTANCE.SetWindowLong(hwnd, WinUser.GWL_EXSTYLE, exStyle);
-            logger.trace( "setClickThroughReceiver() window={} ok !", windowName);
+            User32.setWindowLongPtr(hwnd, WinUser.GWL_EXSTYLE, exStyle);
+            logger.trace("setClickThroughReceiver() window={} ok !", windowName);
         } else {
-            logger.error( "setClickThroughReceiver() window={} not found", windowName);
+            logger.error("setClickThroughReceiver() window={} not found", windowName);
         }
     }
 
     public static void setAlwaysOnTop(String windowName) {
-        WinDef.HWND hwnd = User32.INSTANCE.FindWindow(null, windowName);
-        if (hwnd != null) {
-            User32.INSTANCE.SetWindowPos(hwnd, new WinDef.HWND(new Pointer(-1)),
+        long hwnd = findWindow(windowName);
+        if (hwnd != 0L) {
+            User32.setWindowPos(hwnd, WinUser.HWND_TOPMOST,
                     0, 0, 0, 0, WinUser.SWP_NOMOVE | WinUser.SWP_NOSIZE | WinUser.SWP_NOACTIVATE);
-//            0, 0, 0, 0, WinUser.SWP_NOMOVE | WinUser.SWP_NOSIZE | WinUser.SWP_SHOWWINDOW);
-            logger.trace( "setAlwaysOnTop() window={} ok !", windowName);
+            logger.trace("setAlwaysOnTop() window={} ok !", windowName);
         } else {
-            logger.error( "setAlwaysOnTop() window={} not found", windowName);
+            logger.error("setAlwaysOnTop() window={} not found", windowName);
         }
     }
 
-
     public static boolean isIconic(String windowName) {
-        WinDef.HWND hwnd = User32.INSTANCE.FindWindow(null, windowName);
-        if (hwnd == null) {
-            logger.error( "isIconic() window={} not found", windowName);
+        long hwnd = findWindow(windowName);
+        if (hwnd == 0L) {
+            logger.error("isIconic() window={} not found", windowName);
             return false;
         }
-        boolean iconic = USER_32_EXTENDED.IsIconic(hwnd);
-        logger.error( "isIconic() window={} iconic={}", windowName, iconic);
+        boolean iconic = User32.isIconic(hwnd);
+        logger.error("isIconic() window={} iconic={}", windowName, iconic);
         return iconic;
     }
 
     public static WindowDisplayMode getDisplayMode(String windowName) {
-        WinDef.HWND hwnd = User32.INSTANCE.FindWindow(null, windowName);
-        if (hwnd == null) {
-            logger.error( "getDisplayMode() window={} not found", windowName);
+        long hwnd = findWindow(windowName);
+        if (hwnd == 0L) {
+            logger.error("getDisplayMode() window={} not found", windowName);
             return null;
         }
-        if (!User32.INSTANCE.IsWindowVisible(hwnd)) return WindowDisplayMode.Windowed;
+        if (!User32.isWindowVisible(hwnd)) return WindowDisplayMode.Windowed;
 
+        Rectangle windowRect = getWindowBounds(windowName);
+        if (windowRect == null) {
+            return WindowDisplayMode.Windowed;
+        }
 
-        WinDef.RECT windowRect = new WinDef.RECT();
-        User32.INSTANCE.GetWindowRect(hwnd, windowRect);
-
-        // Taille de la fenêtre
-        int windowWidth = windowRect.right - windowRect.left;
-        int windowHeight = windowRect.bottom - windowRect.top;
-
-        // Vérifie si elle est en mode minimisé
-        if (USER_32_EXTENDED.IsIconic(hwnd)) return WindowDisplayMode.Windowed;
+        // Verifie si elle est en mode minimise
+        if (User32.isIconic(hwnd)) return WindowDisplayMode.Windowed;
 
         int screenIndexGdx = getScreenIndexAwt(windowName);
         Rectangle screenBounds = getScreenBoundsAwt(screenIndexGdx);
-        if (screenBounds.width == windowWidth && screenBounds.height == windowHeight &&
-                screenBounds.x == windowRect.left && screenBounds.y == windowRect.top) {
-            // Elle occupe exactement un écran -> peut être borderless ou fullscreen
-            // Pour affiner : check s’il y a une bordure ou une barre
-            int style = User32.INSTANCE.GetWindowLong(hwnd, WinUser.GWL_STYLE);
+        if (screenBounds != null
+                && screenBounds.width == windowRect.width && screenBounds.height == windowRect.height
+                && screenBounds.x == windowRect.x && screenBounds.y == windowRect.y) {
+            // Elle occupe exactement un ecran -> peut etre borderless ou fullscreen
+            long style = User32.getWindowLongPtr(hwnd, WinUser.GWL_STYLE);
             boolean hasBorder = (style & WinUser.WS_OVERLAPPEDWINDOW) != 0;
 
             return hasBorder ? WindowDisplayMode.Borderless : WindowDisplayMode.Fullscreen;
@@ -135,61 +135,54 @@ public class Window32Utils {
      * true if in background (non visible , other window in front)
      */
     public static boolean isVisible(String windowName) {
-        WinDef.HWND hwnd = User32.INSTANCE.FindWindow(null, windowName);
-        if (hwnd == null) {
-            logger.error( "isVisible() window={} not found", windowName);
+        long hwnd = findWindow(windowName);
+        if (hwnd == 0L) {
+            logger.error("isVisible() window={} not found", windowName);
             return false;
         }
-        boolean visible = User32.INSTANCE.IsWindowVisible(hwnd);
-        logger.trace( "isVisible() window={} visible={}", windowName, visible);
+        boolean visible = User32.isWindowVisible(hwnd);
+        logger.trace("isVisible() window={} visible={}", windowName, visible);
         return visible;
     }
 
-
     public static String getActiveWindowTitle() {
-        char[] buffer = new char[1024];
-        WinDef.HWND hwnd = User32.INSTANCE.GetForegroundWindow(); // fenêtre active
-        if (hwnd == null) {
-            logger.error( "getActiveWindowTitle() found no active window");
+        long hwnd = User32.getForegroundWindow(); // fenetre active
+        if (hwnd == 0L) {
+            logger.error("getActiveWindowTitle() found no active window");
             return null;
         }
-        User32.INSTANCE.GetWindowText(hwnd, buffer, 1024);
-        return Native.toString(buffer);
+        return User32.getWindowText(hwnd);
     }
 
     public static Rectangle getWindowBounds(String windowName) {
-        WinDef.HWND hwnd = User32.INSTANCE.FindWindow(null, windowName);
-        if (hwnd == null) {
-            logger.error( "getWindowBounds() window={} not found", windowName);
+        long hwnd = findWindow(windowName);
+        if (hwnd == 0L) {
+            logger.error("getWindowBounds() window={} not found", windowName);
             return null;
         }
 
-        WinDef.RECT rect = new WinDef.RECT();
-        User32.INSTANCE.GetWindowRect(hwnd, rect);
-
-        int width = rect.right - rect.left;
-        int height = rect.bottom - rect.top;
-        logger.trace( "getWindowBounds() window={} at {}", windowName, rect);
-        return new Rectangle(rect.left, rect.top, width, height);
+        var res = Window64Utils.getWindowBounds(hwnd);
+        Rectangle bounds = res.isSuccess() ? res.getResult() : null;
+        logger.trace("getWindowBounds() window={} at {}", windowName, bounds);
+        return bounds;
     }
 
     public static Rectangle getScreenBoundsAwt(int screenIndex) {
         if (screenIndex == -1) {
-            logger.trace( "getScreenBoundsAwt called with screenIndex = -1, Bad value!");
+            logger.trace("getScreenBoundsAwt called with screenIndex = -1, Bad value!");
             return null;
         }
         GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
         GraphicsDevice[] screens = ge.getScreenDevices();
         Rectangle screenBounds = screens[screenIndex].getDefaultConfiguration().getBounds();
-        logger.trace( "getScreenBoundsAwt of screenIndex ={} result ={}", screenIndex, screenBounds);
+        logger.trace("getScreenBoundsAwt of screenIndex ={} result ={}", screenIndex, screenBounds);
         return screenBounds;
     }
-
 
     public static int getScreenIndexAwt(String windowName) {
         Rectangle windowBounds = getWindowBounds(windowName);
         if (windowBounds == null) {
-            logger.error( "getScreenIndexAwt() window={} not found", windowName);
+            logger.error("getScreenIndexAwt() window={} not found", windowName);
             return 0;
         }
 
@@ -224,13 +217,14 @@ public class Window32Utils {
     }
 
     public static void setWindowPosition(String windowName, Rectangle posSize) {
-        WinDef.HWND hwnd = User32.INSTANCE.FindWindow(null, windowName);
-        if (hwnd == null) {
-            logger.error( "setWindowPositions() window={} not found", windowName);
+        long hwnd = findWindow(windowName);
+        if (hwnd == 0L) {
+            logger.error("setWindowPositions() window={} not found", windowName);
+            return;
         }
-        boolean ok = User32.INSTANCE.SetWindowPos(
+        boolean ok = User32.setWindowPos(
                 hwnd,
-                null,
+                0,
                 posSize.x,
                 posSize.y,
                 posSize.width,
@@ -238,21 +232,20 @@ public class Window32Utils {
         );
 
         if (ok) {
-            logger.trace( "setWindowPosition() success! window={} at pos={}", windowName, posSize);
+            logger.trace("setWindowPosition() success! window={} at pos={}", windowName, posSize);
         } else {
-            logger.error( "setWindowPosition() failed to move window={} at pos={}", windowName, posSize);
-
+            logger.error("setWindowPosition() failed to move window={} at pos={}", windowName, posSize);
         }
     }
 
     public static int getDpiForWindow(String windowName) {
-        WinDef.HWND hwnd = User32.INSTANCE.FindWindow(null, windowName);
-        if (hwnd == null) {
-            logger.error( "getDpiForWindow() window={} not found", windowName);
+        long hwnd = findWindow(windowName);
+        if (hwnd == 0L) {
+            logger.error("getDpiForWindow() window={} not found", windowName);
             return -1;
         }
-        int dpi = USER_32_EXTENDED.GetDpiForWindow(hwnd);
-        logger.trace( "getDpiForWindow() window={} has dpi={}", windowName, dpi);
+        int dpi = User32.getDpiForWindow(hwnd);
+        logger.trace("getDpiForWindow() window={} has dpi={}", windowName, dpi);
         return dpi;
     }
 }

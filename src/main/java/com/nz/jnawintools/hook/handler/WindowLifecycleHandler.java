@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import static com.nz.jnawintools.hook.cst.WinEventConstants.EVENT_OBJECT_CREATE;
 import static com.nz.jnawintools.hook.cst.WinEventConstants.EVENT_OBJECT_DESTROY;
+import static com.nz.jnawintools.hook.cst.WinEventConstants.EVENT_OBJECT_NAMECHANGE;
 
 @Slf4j
 public class WindowLifecycleHandler extends BaseWindowEventHandler {
@@ -25,7 +26,9 @@ public class WindowLifecycleHandler extends BaseWindowEventHandler {
     @Override
     public boolean supports(RawWinEvent event) {
         int eventId = event.getEvent();
-        return eventId == EVENT_OBJECT_CREATE || eventId == EVENT_OBJECT_DESTROY;
+        return eventId == EVENT_OBJECT_CREATE
+                || eventId == EVENT_OBJECT_DESTROY
+                || eventId == EVENT_OBJECT_NAMECHANGE;
     }
 
     @Override
@@ -38,23 +41,34 @@ public class WindowLifecycleHandler extends BaseWindowEventHandler {
             return;
         }
 
-        if (!windowToTrackChecker.isWindow(event.getHwnd())) {
+        int eventId = event.getEvent();
+        long hwnd = event.getHwnd();
+        if (eventId == EVENT_OBJECT_NAMECHANGE) {
+            windowToTrackChecker.invalidate(hwnd);
+            return;
+        }
+        if (eventId == EVENT_OBJECT_CREATE) {
+            windowToTrackChecker.invalidate(hwnd);
+        }
+
+        if (!windowToTrackChecker.isWindow(hwnd)) {
             if (log.isTraceEnabled()) {
-                log.trace("[{}] ignored event={} for non tracked hwnd={}", name(), event.getEvent(), event.getHwnd());
+                log.trace("[{}] ignored event={} for non tracked hwnd={}", name(), eventId, hwnd);
             }
             return;
         }
 
-        if (event.getEvent() == EVENT_OBJECT_CREATE) {
+        if (eventId == EVENT_OBJECT_CREATE) {
             if (log.isTraceEnabled()) {
-                log.trace("[{}] dispatch action={} for hwnd={}", name(), WindowEventAction.Created, event.getHwnd());
+                log.trace("[{}] dispatch action={} for hwnd={}", name(), WindowEventAction.Created, hwnd);
             }
             dispatch(WindowEventAction.Created);
-        } else if (event.getEvent() == EVENT_OBJECT_DESTROY) {
+        } else if (eventId == EVENT_OBJECT_DESTROY) {
             if (log.isTraceEnabled()) {
-                log.trace("[{}] dispatch action={} for hwnd={}", name(), WindowEventAction.Closed, event.getHwnd());
+                log.trace("[{}] dispatch action={} for hwnd={}", name(), WindowEventAction.Closed, hwnd);
             }
             dispatch(WindowEventAction.Closed);
+            windowToTrackChecker.invalidate(hwnd);
         }
     }
 }

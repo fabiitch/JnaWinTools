@@ -76,7 +76,7 @@ public class WindowHook {
                         new WinEventRange(
                                 "OBJECT",
                                 EVENT_OBJECT_CREATE,
-                                EVENT_OBJECT_STATECHANGE,
+                                EVENT_OBJECT_NAMECHANGE,
                                 flags
                         ),
                         new WinEventRange(

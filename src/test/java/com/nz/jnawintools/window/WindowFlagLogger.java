@@ -1,18 +1,24 @@
 package com.nz.jnawintools.window;
 
+import com.nz.jnawintools.win32.Dwmapi;
+import com.nz.jnawintools.win32.RECT;
+import com.nz.jnawintools.win32.User32;
+import com.nz.jnawintools.win32.WinUser;
 import com.nz.jnawintools.window.result.HwndResult;
 import com.nz.jnawintools.window.result.WindowStyleResult;
-import com.sun.jna.Native;
-import com.sun.jna.Pointer;
-import com.sun.jna.platform.win32.BaseTSD;
-import com.sun.jna.platform.win32.WinDef;
-import com.sun.jna.win32.StdCallLibrary;
 import org.junit.jupiter.api.Assumptions;
-import org.junit.jupiter.api.Test;
 
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+
+import static java.lang.foreign.ValueLayout.JAVA_INT;
+
+/**
+ * Diagnostic helper printing the style / extended-style / class-style / DWM attribute flags of a
+ * window. It reuses the production FFM bindings ({@link User32}, {@link Dwmapi}); no JNA interface
+ * is declared here.
+ */
 public class WindowFlagLogger {
-
-    private static final int GCL_STYLE = -26;
 
     private static final int DWMWA_NCRENDERING_ENABLED = 1;
     private static final int DWMWA_CAPTION_BUTTON_BOUNDS = 5;
@@ -89,17 +95,16 @@ public class WindowFlagLogger {
         Assumptions.assumeTrue(hwndResult.isSuccess(),
                 "Window not found: " + windowName);
 
-        WindowStyleResult exStyleResult = Window64Utils.getExStyle(hwndResult.getHwnd());
-        WindowStyleResult styleResult = Window64Utils.getNormalStyle(hwndResult.getHwnd());
+        long hwnd = hwndResult.getHwnd();
+        WindowStyleResult exStyleResult = Window64Utils.getExStyle(hwnd);
+        WindowStyleResult styleResult = Window64Utils.getNormalStyle(hwnd);
 
         Assumptions.assumeTrue(exStyleResult.isSuccess(), exStyleResult.getErrorMessage());
         Assumptions.assumeTrue(styleResult.isSuccess(), styleResult.getErrorMessage());
 
-        WinDef.HWND hwndRef = hwndResult.getHwnd();
         long exStyle = exStyleResult.getStyle();
         long style = styleResult.getStyle();
-        long classStyle = getClassStyle(hwndRef);
-        long hwnd = Pointer.nativeValue(hwndRef.getPointer());
+        long classStyle = getClassStyle(hwnd);
 
         System.out.println("Window name: " + windowName);
         System.out.println("HWND       : 0x" + Long.toHexString(hwnd).toUpperCase());
@@ -164,7 +169,7 @@ public class WindowFlagLogger {
                 flag("CS_GLOBALCLASS", CS_GLOBALCLASS),
                 flag("CS_DROPSHADOW", CS_DROPSHADOW));
 
-        printDwmAttributes(hwndRef);
+        printDwmAttributes(hwnd);
     }
 
     private static Flag flag(String name, long value) {
@@ -183,15 +188,11 @@ public class WindowFlagLogger {
         System.out.println();
     }
 
-    private static long getClassStyle(WinDef.HWND hwnd) {
-        try {
-            return User32Flag.INSTANCE.GetClassLongPtrW(hwnd, GCL_STYLE).longValue();
-        } catch (UnsatisfiedLinkError ignored) {
-            return Integer.toUnsignedLong(User32Flag.INSTANCE.GetClassLongW(hwnd, GCL_STYLE));
-        }
+    private static long getClassStyle(long hwnd) {
+        return User32.getClassLongPtr(hwnd, WinUser.GCL_STYLE);
     }
 
-    private static void printDwmAttributes(WinDef.HWND hwnd) {
+    private static void printDwmAttributes(long hwnd) {
         System.out.println("DWM");
         printDwmInt(hwnd, "DWMWA_NCRENDERING_ENABLED", DWMWA_NCRENDERING_ENABLED);
         printDwmInt(hwnd, "DWMWA_FORCE_ICONIC_REPRESENTATION", DWMWA_FORCE_ICONIC_REPRESENTATION);
@@ -206,25 +207,28 @@ public class WindowFlagLogger {
         System.out.println();
     }
 
-    private static void printDwmInt(WinDef.HWND hwnd, String name, int attribute) {
-        WinDef.DWORDByReference value = new WinDef.DWORDByReference();
-        int result = DwmapiFlag.INSTANCE.DwmGetWindowAttribute(hwnd, attribute, value.getPointer(), 4);
-        if (result == 0) {
-            System.out.printf("%-34s %5d%n", name, value.getValue().intValue());
-        } else {
-            System.out.printf("%-34s error=0x%08X%n", name, result);
+    private static void printDwmInt(long hwnd, String name, int attribute) {
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment value = arena.allocate(JAVA_INT);
+            int result = Dwmapi.dwmGetWindowAttribute(hwnd, attribute, value, (int) JAVA_INT.byteSize());
+            if (result == 0) {
+                System.out.printf("%-34s %5d%n", name, value.get(JAVA_INT, 0));
+            } else {
+                System.out.printf("%-34s error=0x%08X%n", name, result);
+            }
         }
     }
 
-    private static void printDwmRect(WinDef.HWND hwnd, String name, int attribute) {
-        WinDef.RECT rect = new WinDef.RECT();
-        int result = DwmapiFlag.INSTANCE.DwmGetWindowAttribute(hwnd, attribute, rect.getPointer(), rect.size());
-        if (result == 0) {
-            rect.read();
-            System.out.printf("%-34s left=%d top=%d right=%d bottom=%d%n",
-                    name, rect.left, rect.top, rect.right, rect.bottom);
-        } else {
-            System.out.printf("%-34s error=0x%08X%n", name, result);
+    private static void printDwmRect(long hwnd, String name, int attribute) {
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment rect = RECT.allocate(arena);
+            int result = Dwmapi.dwmGetWindowAttribute(hwnd, attribute, rect, (int) RECT.LAYOUT.byteSize());
+            if (result == 0) {
+                System.out.printf("%-34s left=%d top=%d right=%d bottom=%d%n",
+                        name, RECT.left(rect), RECT.top(rect), RECT.right(rect), RECT.bottom(rect));
+            } else {
+                System.out.printf("%-34s error=0x%08X%n", name, result);
+            }
         }
     }
 
@@ -245,19 +249,5 @@ public class WindowFlagLogger {
             this.value = value;
             this.zeroValue = zeroValue;
         }
-    }
-
-    private interface User32Flag extends StdCallLibrary {
-        User32Flag INSTANCE = Native.load("user32", User32Flag.class);
-
-        BaseTSD.ULONG_PTR GetClassLongPtrW(WinDef.HWND hWnd, int nIndex);
-
-        int GetClassLongW(WinDef.HWND hWnd, int nIndex);
-    }
-
-    private interface DwmapiFlag extends StdCallLibrary {
-        DwmapiFlag INSTANCE = Native.load("dwmapi", DwmapiFlag.class);
-
-        int DwmGetWindowAttribute(WinDef.HWND hwnd, int dwAttribute, Pointer pvAttribute, int cbAttribute);
     }
 }

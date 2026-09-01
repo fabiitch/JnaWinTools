@@ -1,38 +1,38 @@
 package com.nz.jnawintools.window;
 
 import com.nz.jnawintools.enums.WindowDisplayMode;
-import com.nz.jnawintools.win32.User32Extended;
+import com.nz.jnawintools.win32.Kernel32;
+import com.nz.jnawintools.win32.MONITORINFOEXW;
+import com.nz.jnawintools.win32.RECT;
+import com.nz.jnawintools.win32.User32;
+import com.nz.jnawintools.win32.WinUser;
 import com.nz.jnawintools.window.result.*;
 import com.nz.jnawintools.window.utils.WindowMonitorUtils;
-import com.sun.jna.Native;
-import com.sun.jna.Pointer;
-import com.sun.jna.platform.win32.*;
 
 import java.awt.*;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Window utilities backed by the Java FFM Win32 layer.
+ *
+ * <p>Opaque {@code HWND}/{@code HMONITOR} handles cross the Java code as primitive {@code long}
+ * ({@code 0} = null); they are only converted to a {@link MemorySegment} at the downcall boundary
+ * inside {@link User32}.
+ */
 public class Window64Utils {
-
-    private final static User32Extended USER_32_EXTENDED = User32Extended.INSTANCE;
-
-    private final static User32 USER_32 = User32.INSTANCE;
-    private final static Kernel32 KERNEL_32 = Kernel32.INSTANCE;
 
     private static final int WS_EX_TOOLWINDOW = 0x00000080;
     private static final int WS_EX_APPWINDOW = 0x00040000;
-    private final static int WS_EX_NOACTIVATE = 0x08000000;
-    private final static int WS_EX_LAYERED = 0x00080000;
-    private final static int LWA_COLORKEY = 0x00000001; // Constante Windows pour la clÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â© de couleur
-    private final static int WS_EX_NOREDIRECTIONBITMAP = 0x00200000;
+    private static final int WS_EX_NOACTIVATE = 0x08000000;
+    private static final int WS_EX_LAYERED = 0x00080000;
+    private static final int LWA_COLORKEY = 0x00000001;
+    private static final int WS_EX_NOREDIRECTIONBITMAP = 0x00200000;
 
-    private static Pointer longToPointer(long value) {
-        return new Pointer(value);
-    }
-
-    public static boolean isValid(WinDef.HWND hwnd) {
-        return hwnd != null && hwnd.getPointer() != null && Pointer.nativeValue(hwnd.getPointer()) != 0
-                && USER_32_EXTENDED.IsWindow(hwnd);
+    public static boolean isValid(long hwnd) {
+        return hwnd != 0L && User32.isWindow(hwnd);
     }
 
     /**
@@ -40,46 +40,43 @@ public class Window64Utils {
      */
 
     public static HwndResult getHwnd(String windowName) {
-        KERNEL_32.SetLastError(0);
-        WinDef.HWND hwnd = USER_32.FindWindow(null, windowName);
-        if (hwnd != null && hwnd.getPointer() != null) {
+        Kernel32.setLastError(0);
+        long hwnd;
+        try (Arena arena = Arena.ofConfined()) {
+            hwnd = User32.findWindow(arena, windowName);
+        }
+        if (hwnd != 0L) {
             return HwndResult.success(hwnd);
         }
-        return HwndResult.failure(KERNEL_32.GetLastError());
+        return HwndResult.failure(Kernel32.getLastError());
     }
 
-    public static WinDef.HWND getHwnd(long windowHandle) {
-        return new WinDef.HWND(Pointer.createConstant(windowHandle));
+    public static long getHwnd(long windowHandle) {
+        return windowHandle;
     }
 
-    public static WinApiResultExtended<String> getName(WinDef.HWND hwnd) {
-        char[] buffer = new char[1024];
-        // Lecture du titre
-        Kernel32.INSTANCE.SetLastError(0);
-        int copied = USER_32.GetWindowText(hwnd, buffer, buffer.length);
-        int error = Kernel32.INSTANCE.GetLastError();
+    public static WinApiResultExtended<String> getName(long hwnd) {
+        Kernel32.setLastError(0);
+        String title = User32.getWindowText(hwnd);
+        int error = Kernel32.getLastError();
 
-        if (copied == 0) {
+        if (title.isEmpty()) {
             if (error != 0) {
                 return WinApiResultExtended.failureValue(error);
             }
-            return WinApiResultExtended.success(""); // Pas de titre mais pas dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢erreur
+            return WinApiResultExtended.success(""); // Pas de titre mais pas d'erreur
         }
-
-        String title = Native.toString(buffer);
         return WinApiResultExtended.success(title);
     }
-
 
     public static boolean isActive(String windowName) {
         return getHwnd(windowName).isSuccess();
     }
 
-    public static WindowStyleResult getStyle(WinDef.HWND hwnd, int index) {
-        KERNEL_32.SetLastError(0);
-        BaseTSD.LONG_PTR stylePtr = USER_32.GetWindowLongPtr(hwnd, index);
-        int error = KERNEL_32.GetLastError();
-        long styleValue = stylePtr.longValue();
+    public static WindowStyleResult getStyle(long hwnd, int index) {
+        Kernel32.setLastError(0);
+        long styleValue = User32.getWindowLongPtr(hwnd, index);
+        int error = Kernel32.getLastError();
 
         if (styleValue == 0 && error != 0) {
             return WindowStyleResult.failure(error);
@@ -87,10 +84,10 @@ public class Window64Utils {
         return WindowStyleResult.success(styleValue);
     }
 
-    public static WinApiResult setStyle(WinDef.HWND hwnd, int index, long styleValue) {
-        KERNEL_32.SetLastError(0);
-        Pointer result = USER_32.SetWindowLongPtr(hwnd, index, longToPointer(styleValue));
-        int error = KERNEL_32.GetLastError();
+    public static WinApiResult setStyle(long hwnd, int index, long styleValue) {
+        Kernel32.setLastError(0);
+        User32.setWindowLongPtr(hwnd, index, styleValue);
+        int error = Kernel32.getLastError();
         if (error != 0) {
             return WinApiResult.failure(error);
         }
@@ -98,10 +95,10 @@ public class Window64Utils {
     }
 
     /**
-     * Ajoute et/ou retire des flags au style de la fenÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªtre.
+     * Ajoute et/ou retire des flags au style de la fenetre.
      * Ne modifie rien si le style final est identique.
      */
-    public static WinApiResult setStyleIf(WinDef.HWND hwnd, int index, long flagsToAdd, long flagsToRemove) {
+    public static WinApiResult setStyleIf(long hwnd, int index, long flagsToAdd, long flagsToRemove) {
         WindowStyleResult currentStyle = getStyle(hwnd, index);
         if (currentStyle.isFailure()) {
             return WinApiResult.failure(currentStyle.getErrorCode());
@@ -116,56 +113,55 @@ public class Window64Utils {
         return setStyle(hwnd, index, newStyle);
     }
 
-    public static WindowStyleResult getNormalStyle(WinDef.HWND hwnd) {
+    public static WindowStyleResult getNormalStyle(long hwnd) {
         return getStyle(hwnd, WinUser.GWL_STYLE);
     }
 
-    public static WindowStyleResult getExStyle(WinDef.HWND hwnd) {
+    public static WindowStyleResult getExStyle(long hwnd) {
         return getStyle(hwnd, WinUser.GWL_EXSTYLE);
     }
 
     // Helpers lisibles
-    public static WinApiResult setNormalStyleIf(WinDef.HWND hwnd, long flagsToAdd, long flagsToRemove) {
+    public static WinApiResult setNormalStyleIf(long hwnd, long flagsToAdd, long flagsToRemove) {
         return setStyleIf(hwnd, WinUser.GWL_STYLE, flagsToAdd, flagsToRemove);
     }
 
-    public static WinApiResult setExStyleIf(WinDef.HWND hwnd, long flagsToAdd, long flagsToRemove) {
+    public static WinApiResult setExStyleIf(long hwnd, long flagsToAdd, long flagsToRemove) {
         return setStyleIf(hwnd, WinUser.GWL_EXSTYLE, flagsToAdd, flagsToRemove);
     }
 
     // Raccourcis simples pour ajouter/retirer uniquement
-    public static WinApiResult addNormalStyle(WinDef.HWND hwnd, long flagsToAdd) {
+    public static WinApiResult addNormalStyle(long hwnd, long flagsToAdd) {
         return setNormalStyleIf(hwnd, flagsToAdd, 0);
     }
 
-    public static WinApiResult addExStyle(WinDef.HWND hwnd, long flagsToAdd) {
+    public static WinApiResult addExStyle(long hwnd, long flagsToAdd) {
         return setExStyleIf(hwnd, flagsToAdd, 0);
     }
 
-    public static WinApiResult removeNormalStyle(WinDef.HWND hwnd, long flagsToRemove) {
+    public static WinApiResult removeNormalStyle(long hwnd, long flagsToRemove) {
         return setNormalStyleIf(hwnd, 0, flagsToRemove);
     }
 
-    public static WinApiResult removeExStyle(WinDef.HWND hwnd, long flagsToRemove) {
+    public static WinApiResult removeExStyle(long hwnd, long flagsToRemove) {
         return setExStyleIf(hwnd, 0, flagsToRemove);
     }
 
-    public static WinApiResult setToolWindow(WinDef.HWND hwnd, boolean enabled) {
+    public static WinApiResult setToolWindow(long hwnd, boolean enabled) {
         if (enabled) {
             return addExStyle(hwnd, WS_EX_TOOLWINDOW);
         }
         return removeExStyle(hwnd, WS_EX_TOOLWINDOW);
     }
 
-    public static WinApiResult setAppWindow(WinDef.HWND hwnd, boolean enabled) {
+    public static WinApiResult setAppWindow(long hwnd, boolean enabled) {
         if (enabled) {
             return addExStyle(hwnd, WS_EX_APPWINDOW);
         }
         return removeExStyle(hwnd, WS_EX_APPWINDOW);
     }
 
-    
-    public static WinApiResult setNoRedirectionBitmap(WinDef.HWND hwnd, boolean enabled) {
+    public static WinApiResult setNoRedirectionBitmap(long hwnd, boolean enabled) {
         if (enabled) {
             return addExStyle(hwnd, WS_EX_NOREDIRECTIONBITMAP);
         }
@@ -175,25 +171,25 @@ public class Window64Utils {
     /**
      * ------------------ TRANSPARENCE ------------------
      */
-    public static WinApiResult enableTransparency(WinDef.HWND hwnd) {
-        // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â°tape 1 : ajouter WS_EX_LAYERED si nÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©cessaire (dans EXSTYLE, pas STYLE)
+    public static WinApiResult enableTransparency(long hwnd) {
+        // Etape 1 : ajouter WS_EX_LAYERED si necessaire (dans EXSTYLE, pas STYLE)
         WinApiResult addResult = addExStyle(hwnd, WS_EX_LAYERED);
         if (addResult.isFailure()) {
             return addResult;
         }
 
-        // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â°tape 2 : appliquer l'opacitÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â© totale (255)
+        // Etape 2 : appliquer l'opacite totale (255)
         return applyLayeredOpacity(hwnd, (byte) 255);
     }
 
     /**
-     * Applique une opacitÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â© ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â  une fenÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªtre ayant WS_EX_LAYERED.
-     * alpha = 0 (transparent) ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â  255 (opaque)
+     * Applique une opacite a une fenetre ayant WS_EX_LAYERED.
+     * alpha = 0 (transparent) a 255 (opaque)
      */
-    private static WinApiResult applyLayeredOpacity(WinDef.HWND hwnd, byte alpha) {
-        KERNEL_32.SetLastError(0);
-        boolean ok = USER_32.SetLayeredWindowAttributes(hwnd, 0, alpha, 2); // LWA_ALPHA
-        int error = KERNEL_32.GetLastError();
+    private static WinApiResult applyLayeredOpacity(long hwnd, byte alpha) {
+        Kernel32.setLastError(0);
+        boolean ok = User32.setLayeredWindowAttributes(hwnd, 0, alpha, WinUser.LWA_ALPHA);
+        int error = Kernel32.getLastError();
         if (!ok && error != 0) {
             return WinApiResult.failure(error);
         }
@@ -201,10 +197,10 @@ public class Window64Utils {
     }
 
     /**
-     * ------------------ MODES DE FENÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â TRE ------------------
+     * ------------------ MODES DE FENETRE ------------------
      */
 
-    public static WinApiResult setBorderless(WinDef.HWND hwnd) {
+    public static WinApiResult setBorderless(long hwnd) {
         WinApiResultExtended<Integer> screenIndexResult = getScreenIndex(hwnd);
         if (screenIndexResult.isFailure()) {
             return WinApiResult.failure(screenIndexResult.getErrorCode());
@@ -212,7 +208,7 @@ public class Window64Utils {
         return setBorderlessOnScreen(hwnd, screenIndexResult.getResult());
     }
 
-    public static WinApiResult setBorderlessOnScreen(WinDef.HWND hwnd, int screenIndex) {
+    public static WinApiResult setBorderlessOnScreen(long hwnd, int screenIndex) {
         ScreenBoundsResult screenBoundsRes = getScreenBounds(screenIndex);
         if (!screenBoundsRes.isSuccess()) {
             return WinApiResult.failure(screenBoundsRes.getErrorCode());
@@ -230,7 +226,7 @@ public class Window64Utils {
             return styleRes;
         }
 
-        // S'assurer quÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢elle reste dans la barre des tÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ches
+        // S'assurer qu'elle reste dans la barre des taches
         WinApiResult exStyleRes = addExStyle(hwnd, WS_EX_APPWINDOW);
         if (exStyleRes.isFailure()) {
             return exStyleRes;
@@ -239,7 +235,7 @@ public class Window64Utils {
         return resize(hwnd, bounds, true);
     }
 
-    public static WinApiResult setFullScreen(WinDef.HWND hwnd) {
+    public static WinApiResult setFullScreen(long hwnd) {
         WinApiResultExtended<Integer> screenIndexResult = getScreenIndex(hwnd);
         if (screenIndexResult.isFailure()) {
             return WinApiResult.failure(screenIndexResult.getErrorCode());
@@ -247,7 +243,7 @@ public class Window64Utils {
         return setFullScreenOnScreen(hwnd, screenIndexResult.getResult());
     }
 
-    public static WinApiResult setFullScreenOnScreen(WinDef.HWND hwnd, int screenIndex) {
+    public static WinApiResult setFullScreenOnScreen(long hwnd, int screenIndex) {
         ScreenBoundsResult screenBoundsRes = getScreenBounds(screenIndex);
         if (!screenBoundsRes.isSuccess()) {
             return WinApiResult.failure(screenBoundsRes.getErrorCode());
@@ -267,9 +263,9 @@ public class Window64Utils {
     }
 
     /**
-     * DÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©corÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©e (bordures)
+     * Decoree (bordures)
      */
-    public static WinApiResult setWindowDecorated(WinDef.HWND hwnd) {
+    public static WinApiResult setWindowDecorated(long hwnd) {
         WinApiResultExtended<Boolean> decoratedRes = isWindowDecorated(hwnd);
         if (decoratedRes.isSuccess() && decoratedRes.getResult()) {
             return WinApiResult.success();
@@ -287,9 +283,9 @@ public class Window64Utils {
     }
 
     /**
-     * Non dÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©corÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©e (sans bordures ni barre de titre)
+     * Non decoree (sans bordures ni barre de titre)
      */
-    public static WinApiResult setWindowUnDecorated(WinDef.HWND hwnd) {
+    public static WinApiResult setWindowUnDecorated(long hwnd) {
         WindowBoundsResult windowBoundsRes = getWindowBounds(hwnd);
         if (windowBoundsRes.isFailure()) {
             return WinApiResult.failure(windowBoundsRes.getErrorCode());
@@ -302,62 +298,61 @@ public class Window64Utils {
         return resize(hwnd, bounds, false);
     }
 
-    public static WinApiResult showWindow(WinDef.HWND hwnd) {
+    public static WinApiResult showWindow(long hwnd) {
         IconicResult iconic = isIconic(hwnd);
         if (iconic.isFailure()) {
             return WinApiResult.failure(iconic.getErrorCode());
         }
-        KERNEL_32.SetLastError(0);
-        boolean ok;
+        // ShowWindow renvoie l'etat de visibilite precedent, pas un booleen de reussite :
+        // on evalue le succes via GetLastError.
+        Kernel32.setLastError(0);
         if (iconic.isIconic()) {
-            ok = USER_32.ShowWindow(hwnd, WinUser.SW_RESTORE);
+            User32.showWindow(hwnd, WinUser.SW_RESTORE);
         } else {
-            ok = USER_32.ShowWindow(hwnd, WinUser.SW_SHOW);
+            User32.showWindow(hwnd, WinUser.SW_SHOW);
         }
-        if (!ok) {
-            int error = KERNEL_32.GetLastError();
-            return WinApiResult.failure(error != 0 ? error : 0x71001);
+        int error = Kernel32.getLastError();
+        if (error != 0) {
+            return WinApiResult.failure(error);
         }
         return WinApiResult.success();
     }
 
-    public static WinApiResult hideWindow(WinDef.HWND hwnd) {
+    public static WinApiResult hideWindow(long hwnd) {
         IconicResult iconic = isIconic(hwnd);
         if (iconic.isFailure()) {
             return WinApiResult.failure(iconic.getErrorCode());
         }
-        boolean ok;
         if (iconic.isIconic()) {
             return WinApiResult.success();
         }
-        KERNEL_32.SetLastError(0);
-        ok = USER_32.ShowWindow(hwnd, WinUser.SW_HIDE);
-        if (!ok) {
-            int error = KERNEL_32.GetLastError();
-            return WinApiResult.failure(error != 0 ? error : 0x71001);
+        Kernel32.setLastError(0);
+        User32.showWindow(hwnd, WinUser.SW_HIDE);
+        int error = Kernel32.getLastError();
+        if (error != 0) {
+            return WinApiResult.failure(error);
         }
         return WinApiResult.success();
     }
-
 
     /**
      * ------------------ AUTRES UTILS ------------------
      */
-    private static WinApiResult resize(WinDef.HWND hwnd, Rectangle bounds, boolean showWindow) {
+    private static WinApiResult resize(long hwnd, Rectangle bounds, boolean showWindow) {
         int flags = WinUser.SWP_FRAMECHANGED | WinUser.SWP_NOZORDER;
         if (showWindow) {
             flags |= WinUser.SWP_SHOWWINDOW;
         }
-        KERNEL_32.SetLastError(0);
-        boolean ok = USER_32.SetWindowPos(
+        Kernel32.setLastError(0);
+        boolean ok = User32.setWindowPos(
                 hwnd,
-                null,
+                0,
                 bounds.x, bounds.y,
                 bounds.width, bounds.height,
                 flags
         );
         if (!ok) {
-            int error = KERNEL_32.GetLastError();
+            int error = Kernel32.getLastError();
             return WinApiResult.failure(error != 0 ? error : 0x71000);
         }
         return WinApiResult.success();
@@ -367,7 +362,7 @@ public class Window64Utils {
      * ------------------ INFOS ------------------
      */
 
-    public static WinApiResultExtended<Boolean> isWindowDecorated(WinDef.HWND hwnd) {
+    public static WinApiResultExtended<Boolean> isWindowDecorated(long hwnd) {
         WindowStyleResult styleResult = getNormalStyle(hwnd);
         if (styleResult.isFailure()) {
             return WinApiResultExtended.failureValue(styleResult.getErrorCode());
@@ -377,7 +372,7 @@ public class Window64Utils {
         return WinApiResultExtended.success(decorated);
     }
 
-    public static Rectangle adjustBoundsToScreen(Rectangle bounds, WinDef.HWND hwnd) {
+    public static Rectangle adjustBoundsToScreen(Rectangle bounds, long hwnd) {
         WinApiResultExtended<Integer> screenIndexRes = getScreenIndex(hwnd);
         if (!screenIndexRes.isSuccess()) return bounds;
         ScreenBoundsResult screenRes = getScreenBounds(screenIndexRes.getResult());
@@ -396,15 +391,15 @@ public class Window64Utils {
     /**
      * ------------------ Utils ------------------
      */
-    public static WinApiResult setClickThrough(WinDef.HWND hwnd) {
+    public static WinApiResult setClickThrough(long hwnd) {
         return addExStyle(hwnd, WinUser.WS_EX_LAYERED | WinUser.WS_EX_TRANSPARENT);
     }
 
-    public static WinApiResult setClickThroughReceiver(WinDef.HWND hwnd) {
+    public static WinApiResult setClickThroughReceiver(long hwnd) {
         return removeExStyle(hwnd, WinUser.WS_EX_TRANSPARENT);
     }
 
-    public static WinApiResult setChromaKeyTransparency(WinDef.HWND hwnd) {
+    public static WinApiResult setChromaKeyTransparency(long hwnd) {
         // 1. On s'assure d'avoir WS_EX_LAYERED
         WinApiResult addResult = addExStyle(hwnd, WS_EX_LAYERED);
         if (addResult.isFailure()) {
@@ -412,11 +407,9 @@ public class Window64Utils {
         }
 
         // 2. On applique le ColorKey sur le Noir (RGB: 0, 0, 0)
-        KERNEL_32.SetLastError(0);
-        // Le paramÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¨tre '2' ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â  la fin de ta mÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©thode applyLayeredOpacity c'ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©tait LWA_ALPHA.
-        // Ici on passe 0 (la couleur noire), 0 (pas d'alpha global), et 1 (LWA_COLORKEY)
-        boolean ok = USER_32.SetLayeredWindowAttributes(hwnd, 0, (byte) 0, LWA_COLORKEY);
-        int error = KERNEL_32.GetLastError();
+        Kernel32.setLastError(0);
+        boolean ok = User32.setLayeredWindowAttributes(hwnd, 0, (byte) 0, LWA_COLORKEY);
+        int error = Kernel32.getLastError();
 
         if (!ok && error != 0) {
             return WinApiResult.failure(error);
@@ -424,105 +417,101 @@ public class Window64Utils {
         return WinApiResult.success();
     }
 
-    public static WinApiResult makeNoActivate(WinDef.HWND hwnd) {
+    public static WinApiResult makeNoActivate(long hwnd) {
         return addExStyle(hwnd, WS_EX_NOACTIVATE);
     }
 
-    public static WinApiResult setAlwaysOnTop(WinDef.HWND hwnd) {
-        final WinDef.HWND HWND_TOPMOST = new WinDef.HWND(new Pointer(-1));
-
-        boolean ok = USER_32.SetWindowPos(
+    public static WinApiResult setAlwaysOnTop(long hwnd) {
+        Kernel32.setLastError(0);
+        boolean ok = User32.setWindowPos(
                 hwnd,
-                HWND_TOPMOST,
+                WinUser.HWND_TOPMOST,
                 0, 0, 0, 0,
                 WinUser.SWP_NOMOVE | WinUser.SWP_NOSIZE | WinUser.SWP_NOACTIVATE | WinUser.SWP_SHOWWINDOW
         );
 
-        int error = KERNEL_32.GetLastError();
+        int error = Kernel32.getLastError();
         if (!ok && error != 0) {
             return WinApiResult.failure(error);
         }
         return WinApiResult.success();
     }
 
-    public static WinApiResult setForegroundWindow(WinDef.HWND hwnd) {
-        KERNEL_32.SetLastError(0);
+    public static WinApiResult setForegroundWindow(long hwnd) {
+        Kernel32.setLastError(0);
 
-        // RÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©cupÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¨re le thread de la fenÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªtre active
-        WinDef.HWND foreground = USER_32.GetForegroundWindow();
-        WinDef.DWORD currentThread = new WinDef.DWORD(Kernel32.INSTANCE.GetCurrentThreadId());
-        WinDef.DWORD foregroundThread = new WinDef.DWORD(USER_32.GetWindowThreadProcessId(foreground, null));
+        // Recupere le thread de la fenetre active
+        long foreground = User32.getForegroundWindow();
+        int currentThread = Kernel32.getCurrentThreadId();
+        int foregroundThread = User32.getWindowThreadProcessId(foreground, MemorySegment.NULL);
 
         // Attache les threads pour forcer le focus
-        USER_32.AttachThreadInput(foregroundThread, currentThread, true);
+        User32.attachThreadInput(foregroundThread, currentThread, true);
 
         // Montre et met en avant
-        USER_32.BringWindowToTop(hwnd);
-        USER_32.ShowWindow(hwnd, WinUser.SW_SHOW);
-        boolean ok = USER_32.SetForegroundWindow(hwnd);
+        User32.bringWindowToTop(hwnd);
+        User32.showWindow(hwnd, WinUser.SW_SHOW);
+        boolean ok = User32.setForegroundWindow(hwnd);
+        int error = Kernel32.getLastError();
 
-        // DÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©tache aprÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¨s usage
-        USER_32.AttachThreadInput(foregroundThread, currentThread, false);
+        // Detache apres usage
+        User32.attachThreadInput(foregroundThread, currentThread, false);
 
-        int error = KERNEL_32.GetLastError();
         if (!ok) {
             return WinApiResult.failure(error != 0 ? error : 0x71002);
         }
         return WinApiResult.success();
     }
 
+    public static IconicResult isIconic(long hwnd) {
+        Kernel32.setLastError(0);
+        boolean iconic = User32.isIconic(hwnd);
+        int error = Kernel32.getLastError();
 
-    public static IconicResult isIconic(WinDef.HWND hwnd) {
-        KERNEL_32.SetLastError(0);
-        boolean iconic = USER_32_EXTENDED.IsIconic(hwnd);
-        int error = KERNEL_32.GetLastError();
-
-        // Si la fonction ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©choue (rare, mais possible si hwnd est invalide)
+        // Si la fonction echoue (rare, mais possible si hwnd est invalide)
         if (!iconic && error != 0) {
             return IconicResult.failure(error);
         }
         return IconicResult.success(iconic);
     }
 
-    public static WinApiResultExtended<Integer> getScreenIndex(WinDef.HWND hwnd) {
-        // Trouve le moniteur associÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â© ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â  la fenÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªtre
-        WinUser.HMONITOR targetMonitor = USER_32.MonitorFromWindow(hwnd, WinUser.MONITOR_DEFAULTTONEAREST);
-        if (targetMonitor == null || targetMonitor.getPointer() == null) {
-            int error = KERNEL_32.GetLastError();
+    public static WinApiResultExtended<Integer> getScreenIndex(long hwnd) {
+        // Trouve le moniteur associe a la fenetre
+        Kernel32.setLastError(0);
+        long targetMonitor = User32.monitorFromWindow(hwnd, WinUser.MONITOR_DEFAULTTONEAREST);
+        if (targetMonitor == 0L) {
+            int error = Kernel32.getLastError();
             return WinApiResultExtended.failureValue(error != 0 ? error : 0x91000);
         }
 
-        // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â°numÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¨re tous les moniteurs pour trouver lÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢index du moniteur cible
-        final List<WinUser.HMONITOR> monitors = new ArrayList<>();
-        boolean ok = USER_32.EnumDisplayMonitors(
-                null, null,
-                (hMonitor, hdc, rect, data) -> {
-                    monitors.add(hMonitor);
-                    return 1; // continue enumeration
-                },
-                new WinDef.LPARAM(0)
-        ).booleanValue();
+        // Enumere tous les moniteurs pour trouver l'index du moniteur cible
+        final List<Long> monitors = new ArrayList<>();
+        Kernel32.setLastError(0);
+        boolean ok = User32.enumDisplayMonitors(monitor -> {
+            monitors.add(monitor);
+            return true; // continue enumeration
+        });
 
         if (!ok || monitors.isEmpty()) {
-            int error = KERNEL_32.GetLastError();
+            int error = Kernel32.getLastError();
             return WinApiResultExtended.failureValue(error != 0 ? error : 0x90000);
         }
 
         // Cherche l'index correspondant
         for (int i = 0; i < monitors.size(); i++) {
-            if (monitors.get(i).getPointer().equals(targetMonitor.getPointer())) {
+            if (monitors.get(i) == targetMonitor) {
                 return WinApiResultExtended.success(i);
             }
         }
-        return WinApiResultExtended.failureValue(0x92000); // Moniteur non trouvÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©
+        return WinApiResultExtended.failureValue(0x92000); // Moniteur non trouve
     }
 
-    public static DisplayModeResult getDisplayMode(WinDef.HWND hwnd) {
-        // Si la fenÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªtre est invisible
-        if (!USER_32.IsWindowVisible(hwnd)) {
+    public static DisplayModeResult getDisplayMode(long hwnd) {
+        // Si la fenetre est invisible
+        if (!User32.isWindowVisible(hwnd)) {
             return DisplayModeResult.success(WindowDisplayMode.Windowed);
         }
-        // Si la fenÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªtre est minimisÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©e
+        // Si la fenetre est minimisee
         IconicResult iconic = isIconic(hwnd);
         if (iconic.isFailure()) {
             return DisplayModeResult.failure(iconic.getErrorCode());
@@ -531,7 +520,7 @@ public class Window64Utils {
             return DisplayModeResult.success(WindowDisplayMode.Windowed);
         }
 
-        // Obtenir le rectangle de la fenÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªtre
+        // Obtenir le rectangle de la fenetre
         WindowBoundsResult windowBounds = getWindowBounds(hwnd);
         if (windowBounds.isFailure()) {
             return DisplayModeResult.failure(windowBounds.getErrorCode());
@@ -550,7 +539,7 @@ public class Window64Utils {
             return DisplayModeResult.success(WindowDisplayMode.Windowed);
         }
 
-        // VÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©rifie le style de la fenÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªtre
+        // Verifie le style de la fenetre
         WinApiResultExtended<Boolean> windowDecorated = isWindowDecorated(hwnd);
 
         boolean hasBorder;
@@ -560,7 +549,7 @@ public class Window64Utils {
             return DisplayModeResult.failure(windowDecorated.getErrorCode());
         }
         if (hasBorder) {
-            // Elle a encore des bordures, donc c'est une fenÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªtre maximisÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©e
+            // Elle a encore des bordures, donc c'est une fenetre maximisee
             return DisplayModeResult.success(WindowDisplayMode.Windowed);
         }
         // --- Fullscreen exclusif ? ---
@@ -576,37 +565,38 @@ public class Window64Utils {
             return DisplayModeResult.success(WindowDisplayMode.Fullscreen);
         }
 
-        // Sinon cÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢est du Borderless
+        // Sinon c'est du Borderless
         return DisplayModeResult.success(WindowDisplayMode.Borderless);
     }
 
-    public static ScreenBoundsResult getScreenBoundsForWindow(WinDef.HWND hwnd) {
-        // RÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©cupÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©rer le moniteur de la fenÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªtre
-        KERNEL_32.SetLastError(0);
-        WinUser.HMONITOR hMonitor = USER_32.MonitorFromWindow(hwnd, WinUser.MONITOR_DEFAULTTONEAREST);
-        int error = KERNEL_32.GetLastError();
-        if (hMonitor == null || hMonitor.getPointer() == null) {
+    public static ScreenBoundsResult getScreenBoundsForWindow(long hwnd) {
+        // Recupere le moniteur de la fenetre
+        Kernel32.setLastError(0);
+        long hMonitor = User32.monitorFromWindow(hwnd, WinUser.MONITOR_DEFAULTTONEAREST);
+        int error = Kernel32.getLastError();
+        if (hMonitor == 0L) {
             return ScreenBoundsResult.failure(error != 0 ? error : 0x30000); // code "no monitor"
         }
 
-        // RÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©cupÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©rer les infos du moniteur (coords ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©cran)
-        User32.MONITORINFOEX info = new User32.MONITORINFOEX();
-        info.cbSize = info.size();
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment info = MONITORINFOEXW.allocate(arena);
 
-        KERNEL_32.SetLastError(0);
-        WinDef.BOOL ok = USER_32.GetMonitorInfo(hMonitor, info);
-        error = KERNEL_32.GetLastError();
-        if (ok == null || !ok.booleanValue()) {
-            return ScreenBoundsResult.failure(error != 0 ? error : 0x40000); // code "monitor info failed"
+            Kernel32.setLastError(0);
+            boolean ok = User32.getMonitorInfo(hMonitor, info);
+            error = Kernel32.getLastError();
+            if (!ok) {
+                return ScreenBoundsResult.failure(error != 0 ? error : 0x40000); // code "monitor info failed"
+            }
+
+            MemorySegment rc = MONITORINFOEXW.rcMonitor(info);
+            Rectangle bounds = new Rectangle(
+                    RECT.left(rc),
+                    RECT.top(rc),
+                    RECT.right(rc) - RECT.left(rc),
+                    RECT.bottom(rc) - RECT.top(rc)
+            );
+            return ScreenBoundsResult.success(bounds);
         }
-
-        Rectangle bounds = new Rectangle(
-                info.rcMonitor.left,
-                info.rcMonitor.top,
-                info.rcMonitor.right - info.rcMonitor.left,
-                info.rcMonitor.bottom - info.rcMonitor.top
-        );
-        return ScreenBoundsResult.success(bounds);
     }
 
     /***
@@ -614,12 +604,12 @@ public class Window64Utils {
      * true if minimized
      * true if in background (non visible , other window in front)
      */
-    public static VisibleResult isVisible(WinDef.HWND hwnd) {
-        KERNEL_32.SetLastError(0);
-        boolean visible = USER_32.IsWindowVisible(hwnd);
-        int error = KERNEL_32.GetLastError();
+    public static VisibleResult isVisible(long hwnd) {
+        Kernel32.setLastError(0);
+        boolean visible = User32.isWindowVisible(hwnd);
+        int error = Kernel32.getLastError();
 
-        // Si l'appel ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©choue (rare mais possible si hwnd invalide)
+        // Si l'appel echoue (rare mais possible si hwnd invalide)
         if (!visible && error != 0) {
             return VisibleResult.failure(error);
         }
@@ -628,89 +618,73 @@ public class Window64Utils {
     }
 
     public static HwndResult getForegroundWindow() {
-        KERNEL_32.SetLastError(0);
-        WinDef.HWND hwnd = USER_32.GetForegroundWindow();
-        int error = KERNEL_32.GetLastError();
-        if (hwnd == null || hwnd.getPointer() == null) {
-            // Code 0x10000 = code personnalisÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â© "no active window"
+        Kernel32.setLastError(0);
+        long hwnd = User32.getForegroundWindow();
+        int error = Kernel32.getLastError();
+        if (hwnd == 0L) {
+            // Code 0x10000 = code personnalise "no active window"
             return HwndResult.failure(error != 0 ? error : 0x10000);
         }
         return HwndResult.success(hwnd);
     }
 
     public static ForeGroundWindowNameResult getForegroundWindowName() {
-        char[] buffer = new char[1024];
+        long hwnd = getForegroundWindow().getHwnd();
 
-        // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â°tape 1 : rÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©cupÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©rer la fenÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªtre active
-        HwndResult hwndResult = getForegroundWindow();
-        WinDef.HWND hwnd = hwndResult.getHwnd();
+        Kernel32.setLastError(0);
+        String title = User32.getWindowText(hwnd);
+        int error = Kernel32.getLastError();
 
-        // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â°tape 2 : lire le titre de la fenÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªtre
-        KERNEL_32.SetLastError(0);
-        int copied = USER_32.GetWindowText(hwnd, buffer, 1024);
-        int error = KERNEL_32.GetLastError();
-
-        // VÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©rifier le rÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©sultat de GetWindowText
-        if (copied == 0) {
-            // Peut vouloir dire "pas de texte" OU une erreur
-            if (error != 0) {
-                return ForeGroundWindowNameResult.failure(error);
-            }
+        if (title.isEmpty() && error != 0) {
+            return ForeGroundWindowNameResult.failure(error);
         }
-
-        String title = Native.toString(buffer);
-        return ForeGroundWindowNameResult.success(!title.isEmpty() ? title : "");
+        return ForeGroundWindowNameResult.success(title);
     }
 
     public static WinApiScreensBounds getAllScreenBounds() {
         final List<Rectangle> monitors = new ArrayList<>();
 
-        User32.MONITORENUMPROC enumProc = new User32.MONITORENUMPROC() {
-            @Override
-            public int apply(WinUser.HMONITOR hMonitor, WinDef.HDC hdc, WinDef.RECT rect, WinDef.LPARAM data) {
-                User32.MONITORINFOEX info = new User32.MONITORINFOEX();
-                info.cbSize = info.size();
-                KERNEL_32.SetLastError(0);
-                WinDef.BOOL ok = USER_32.GetMonitorInfo(hMonitor, info);
-                int error = KERNEL_32.GetLastError();
-
-                if (ok != null && ok.booleanValue()) {
+        Kernel32.setLastError(0);
+        boolean ok;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment info = MONITORINFOEXW.allocate(arena);
+            ok = User32.enumDisplayMonitors(hMonitor -> {
+                if (User32.getMonitorInfo(hMonitor, info)) {
+                    MemorySegment rc = MONITORINFOEXW.rcMonitor(info);
                     monitors.add(new Rectangle(
-                            info.rcMonitor.left,
-                            info.rcMonitor.top,
-                            info.rcMonitor.right - info.rcMonitor.left,
-                            info.rcMonitor.bottom - info.rcMonitor.top
+                            RECT.left(rc),
+                            RECT.top(rc),
+                            RECT.right(rc) - RECT.left(rc),
+                            RECT.bottom(rc) - RECT.top(rc)
                     ));
                 }
-                return 1; // continuer l'ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©numÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©ration
-            }
-        };
+                return true; // continuer l'enumeration
+            });
+        }
+        int error = Kernel32.getLastError();
 
-        KERNEL_32.SetLastError(0);
-        WinDef.BOOL ok = USER_32.EnumDisplayMonitors(null, null, enumProc, new WinDef.LPARAM(0));
-        int error = KERNEL_32.GetLastError();
-
-        if (ok == null || !ok.booleanValue() || monitors.isEmpty()) {
+        if (!ok || monitors.isEmpty()) {
             return WinApiScreensBounds.failure(error != 0 ? error : 0x90000);
         }
 
         return WinApiScreensBounds.success(monitors);
     }
 
-    public static WindowBoundsResult getWindowBounds(WinDef.HWND hwnd) {
-        // Lire les coordonnÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©es de la fenÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªtre
-        KERNEL_32.SetLastError(0);
-        WinDef.RECT rect = new WinDef.RECT();
-        boolean ok = USER_32.GetWindowRect(hwnd, rect);
-        int error = KERNEL_32.GetLastError();
-        if (!ok && error != 0) {
-            return WindowBoundsResult.failure(error);
+    public static WindowBoundsResult getWindowBounds(long hwnd) {
+        Kernel32.setLastError(0);
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment rect = RECT.allocate(arena);
+            boolean ok = User32.getWindowRect(hwnd, rect);
+            int error = Kernel32.getLastError();
+            if (!ok && error != 0) {
+                return WindowBoundsResult.failure(error);
+            }
+
+            int width = RECT.right(rect) - RECT.left(rect);
+            int height = RECT.bottom(rect) - RECT.top(rect);
+
+            return WindowBoundsResult.success(new Rectangle(RECT.left(rect), RECT.top(rect), width, height));
         }
-
-        int width = rect.right - rect.left;
-        int height = rect.bottom - rect.top;
-
-        return WindowBoundsResult.success(new Rectangle(rect.left, rect.top, width, height));
     }
 
     public static ScreenBoundsResult getScreenBounds(int screenIndex) {
@@ -721,12 +695,12 @@ public class Window64Utils {
         }
         List<Rectangle> screensBounds = screenBoundsResult.getResult();
         if (screenIndex < 0 || screenIndex >= screensBounds.size()) {
-            return ScreenBoundsResult.failure(0x20000); // code personnalisÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â© : index invalide
+            return ScreenBoundsResult.failure(0x20000); // code personnalise : index invalide
         }
         return ScreenBoundsResult.success(screensBounds.get(screenIndex));
     }
 
-    public static WinApiResult setWindowPosition(WinDef.HWND hwnd, int x, int y) {
+    public static WinApiResult setWindowPosition(long hwnd, int x, int y) {
         WindowBoundsResult windowBounds = getWindowBounds(hwnd);
         if (windowBounds.isFailure()) {
             return WinApiResult.failure(windowBounds.getErrorCode());
@@ -737,34 +711,32 @@ public class Window64Utils {
         return setWindowPosition(hwnd, bounds);
     }
 
-    public static WinApiResult setWindowPosition(WinDef.HWND hwnd, Rectangle posSize) {
-        // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â°tape 2 : dÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©placer/redimensionner la fenÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªtre
-        KERNEL_32.SetLastError(0);
-        boolean ok = USER_32.SetWindowPos(
+    public static WinApiResult setWindowPosition(long hwnd, Rectangle posSize) {
+        Kernel32.setLastError(0);
+        boolean ok = User32.setWindowPos(
                 hwnd,
-                null,
+                0,
                 posSize.x,
                 posSize.y,
                 posSize.width,
                 posSize.height, WinUser.SWP_NOZORDER | WinUser.SWP_NOACTIVATE
         );
-        int error = KERNEL_32.GetLastError();
+        int error = Kernel32.getLastError();
         if (!ok) {
-            return WinApiResult.failure(error != 0 ? error : 0x50000); // code personnalisÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â© "SetWindowPos failed"
+            return WinApiResult.failure(error != 0 ? error : 0x50000); // code personnalise "SetWindowPos failed"
         }
         return WinApiResult.success();
     }
 
-    public static WinApiResultExtended<Integer> getDpiForWindow(WinDef.HWND hwnd) {
-        KERNEL_32.SetLastError(0);
-        int dpi = USER_32_EXTENDED.GetDpiForWindow(hwnd);
-        int error = KERNEL_32.GetLastError();
+    public static WinApiResultExtended<Integer> getDpiForWindow(long hwnd) {
+        Kernel32.setLastError(0);
+        int dpi = User32.getDpiForWindow(hwnd);
+        int error = Kernel32.getLastError();
 
         if (dpi == 0 && error != 0) {
-            return WinApiResultExtended.failureValue(error); // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©chec : renvoie l'erreur
+            return WinApiResultExtended.failureValue(error); // echec : renvoie l'erreur
         }
 
-        return WinApiResultExtended.success(dpi); // succÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¨s
+        return WinApiResultExtended.success(dpi); // succes
     }
-
 }

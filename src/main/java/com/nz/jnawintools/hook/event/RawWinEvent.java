@@ -1,6 +1,5 @@
 package com.nz.jnawintools.hook.event;
 
-import com.sun.jna.platform.win32.WinDef;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -11,14 +10,14 @@ import lombok.Setter;
 public final class RawWinEvent {
 
     private int event;
-    private WinDef.HWND hwnd;
+    private long hwnd;
     private int idObject;
     private int idChild;
     private int eventThread;
     private int eventTime;
 
     public void set(int event,
-                    WinDef.HWND hwnd,
+                    long hwnd,
                     int idObject,
                     int idChild,
                     int eventThread,
@@ -33,7 +32,7 @@ public final class RawWinEvent {
 
     public void clear() {
         this.event = 0;
-        this.hwnd = null;
+        this.hwnd = 0L;
         this.idObject = 0;
         this.idChild = 0;
         this.eventThread = 0;

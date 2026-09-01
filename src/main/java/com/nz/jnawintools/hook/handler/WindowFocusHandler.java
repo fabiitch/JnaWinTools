@@ -4,7 +4,6 @@ import com.nz.jnawintools.hook.event.RawWinEvent;
 import com.nz.jnawintools.hook.event.WindowEventAction;
 import com.nz.jnawintools.hook.event.dispatch.AbstractEventDispatcher;
 import com.nz.jnawintools.hook.window.WindowChecker;
-import com.sun.jna.platform.win32.WinDef;
 import lombok.extern.slf4j.Slf4j;
 
 import static com.nz.jnawintools.hook.cst.WinEventConstants.EVENT_SYSTEM_FOREGROUND;
@@ -20,7 +19,7 @@ public class WindowFocusHandler extends BaseWindowEventHandler {
     }
 
     public void init() {
-        WinDef.HWND foregroundWindow = window64Helper.getForeGroundWindow();
+        long foregroundWindow = window64Helper.getForeGroundWindow();
         hasFocus = windowToTrackChecker.isWindow(foregroundWindow);
         if (log.isTraceEnabled()) {
             log.trace("[{}] initial focus state={} for hwnd={}", name(), hasFocus, foregroundWindow);

@@ -15,6 +15,9 @@ import java.util.function.Consumer;
 @Slf4j
 public class WinEventPump implements Runnable {
 
+    private static final int CRITICAL_DRAIN_BUDGET = 1024;
+    private static final long TERMINATION_TIMEOUT_MILLIS = 5_000L;
+
     private final CriticalWinEventQueue criticalQueue;
     private final LocationChangeBuffer locationBuffer;
     @Getter
@@ -37,6 +40,11 @@ public class WinEventPump implements Runnable {
         this.router = new WinEventHandlerRouter();
     }
 
+    /**
+     * Wakes the consumer thread. Called from the WinEvent callback. Uses {@code unpark}: if the
+     * consumer is not parked yet, the permit is retained so the next {@code park} returns
+     * immediately &mdash; no wakeups are lost, and there is no busy polling.
+     */
     public void signalWork() {
         Thread t = consumerThread;
         if (t != null) {
@@ -44,11 +52,16 @@ public class WinEventPump implements Runnable {
         }
     }
 
-    public void start() {
+    public synchronized void start() {
         if (!running.compareAndSet(false, true)) return;
 
         pumpThread.setPump(this);
-        pumpThread.startAndWait();
+        try {
+            pumpThread.startAndWait();
+        } catch (RuntimeException | Error failure) {
+            running.set(false);
+            throw failure;
+        }
 
         consumerThread = new Thread(this, "WinEventConsumer");
         consumerThread.setDaemon(true);
@@ -58,22 +71,50 @@ public class WinEventPump implements Runnable {
     @Override
     public void run() {
         while (running.get()) {
-            int drainedCritical = criticalQueue.drainTo(criticalConsumer, 1024);
-            boolean drainedLocation = locationBuffer.drainTo(locationConsumer);
-
-            if (drainedCritical == 0 && !drainedLocation) {
-                LockSupport.parkNanos(1_000_000L);
+            boolean didWork = drainOnce();
+            if (!didWork && running.get()) {
+                // Nothing to process: block until the producer signals more work. Re-checking
+                // running above/below the park keeps stop() from being missed.
+                LockSupport.park(this);
             }
+        }
+        // Drain anything left behind so pending events are not lost at shutdown.
+        drainOnce();
+    }
+
+    private boolean drainOnce() {
+        int drainedCritical = criticalQueue.drainTo(criticalConsumer, CRITICAL_DRAIN_BUDGET);
+        boolean drainedLocation = locationBuffer.drainTo(locationConsumer);
+        return drainedCritical > 0 || drainedLocation;
+    }
+
+    public synchronized void stop() {
+        if (!running.get()) return;
+
+        pumpThread.shutdown();
+        awaitTermination(pumpThread);
+
+        running.set(false);
+        Thread t = consumerThread;
+        if (t != null) {
+            LockSupport.unpark(t);
+            awaitTermination(t);
         }
     }
 
-    public void stop() {
-        if (!running.compareAndSet(true, false)) return;
-
-        pumpThread.shutdown();
-
-        if (consumerThread != null) {
-            LockSupport.unpark(consumerThread);
+    private static void awaitTermination(Thread thread) {
+        if (thread == Thread.currentThread()) {
+            return;
+        }
+        try {
+            thread.join(TERMINATION_TIMEOUT_MILLIS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while waiting for " + thread.getName(), e);
+        }
+        if (thread.isAlive()) {
+            throw new IllegalStateException(thread.getName() + " did not stop within "
+                    + TERMINATION_TIMEOUT_MILLIS + " ms");
         }
     }
 

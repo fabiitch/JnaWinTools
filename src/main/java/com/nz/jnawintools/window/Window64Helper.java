@@ -5,11 +5,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.nz.jnawintools.window.result.*;
 import com.nz.jnawintools.window.utils.WindowsErrorMap;
-import com.sun.jna.platform.win32.WinDef;
 import lombok.Getter;
 
 import java.awt.*;
 import java.util.function.Function;
+import java.util.function.LongFunction;
 
 public class Window64Helper {
     @Getter
@@ -26,7 +26,7 @@ public class Window64Helper {
     private <T extends WinApiResult> T withWindowName(
             String windowName,
             String actionName,
-            Function<WinDef.HWND, T> action,
+            LongFunction<T> action,
             Function<Integer, T> errorFactory) {
 
         HwndResult hwndRes = Window64Utils.getHwnd(windowName);
@@ -39,19 +39,18 @@ public class Window64Helper {
     }
 
     private <T extends WinApiResult> T withHwnd(
-            WinDef.HWND hwnd,
+            long hwnd,
             String actionName,
-            Function<WinDef.HWND, T> action) {
+            LongFunction<T> action) {
 
         T result = action.apply(hwnd);
 
-        WinApiResultExtended<String> nameResult = Window64Utils.getName(hwnd);
-        String windowName = nameResult.isSuccess() ? nameResult.getResult() : "NO_NAME_FOUND";
-
         if (result.isFailure()) {
+            String windowName = getWindowNameForLog(hwnd);
             logger.error("Action={} failed for window={} (errorCode={}, {})",
                     actionName, windowName, result.getErrorCode(), WindowsErrorMap.getErrorMessage(result.getErrorCode()));
-        } else {
+        } else if (logger.isTraceEnabled()) {
+            String windowName = getWindowNameForLog(hwnd);
             if (result instanceof WinApiResultExtended<?>) {
                 Object value = ((WinApiResultExtended<?>) result).getResult();
                 logger.trace("Action={} succeeded for window={}, result={}", actionName, windowName, value);
@@ -60,6 +59,11 @@ public class Window64Helper {
             }
         }
         return result;
+    }
+
+    private String getWindowNameForLog(long hwnd) {
+        WinApiResultExtended<String> nameResult = Window64Utils.getName(hwnd);
+        return nameResult.isSuccess() ? nameResult.getResult() : "NO_NAME_FOUND";
     }
 
     public boolean setBorderless(String windowName) {
@@ -147,7 +151,7 @@ public class Window64Helper {
     public boolean setClickThroughReceiver(String windowName) {
         return withWindowName(windowName,
                 "setClickThroughReceiver",
-                Window64Utils::setClickThrough,
+                Window64Utils::setClickThroughReceiver,
                 WinApiResult::failure)
                 .isSuccess();
     }
@@ -176,7 +180,6 @@ public class Window64Helper {
                 .isSuccess();
     }
 
-    
     public boolean setNoRedirectionBitmap(String windowName, boolean enabled) {
         return withWindowName(windowName,
                 "setNoRedirectionBitmap",
@@ -185,7 +188,7 @@ public class Window64Helper {
                 .isSuccess();
     }
 
-    public boolean isIconic(WinDef.HWND hwnd) {
+    public boolean isIconic(long hwnd) {
         IconicResult isIconic = withHwnd(hwnd,
                 "isIconic",
                 Window64Utils::isIconic);
@@ -212,7 +215,7 @@ public class Window64Helper {
         return Window64Utils.isActive(windowName);
     }
 
-    public WinDef.HWND getForeGroundWindow() {
+    public long getForeGroundWindow() {
         return Window64Utils.getForegroundWindow().getHwnd();
     }
 
@@ -239,18 +242,17 @@ public class Window64Helper {
                 .getDisplayMode();
     }
 
-    public WinDef.HWND getHwnd(String windowName) {
-        return withWindowName(windowName,
-                "getHwnd",
-                hwnd -> Window64Utils.getHwnd(windowName),
-                HwndResult::failure).getHwnd();
+    public long getHwnd(String windowName) {
+        HwndResult result = Window64Utils.getHwnd(windowName);
+        if (result.isFailure()) {
+            logger.error("Window not found: {} (errorCode={})", windowName, result.getErrorCode());
+        }
+        return result.getHwnd();
     }
 
-    public String getName(WinDef.HWND hwnd) {
+    public String getName(long hwnd) {
         return withHwnd(hwnd,
                 "getName",
-                res -> Window64Utils.getName(hwnd)).getResult();
+                Window64Utils::getName).getResult();
     }
-
-
 }

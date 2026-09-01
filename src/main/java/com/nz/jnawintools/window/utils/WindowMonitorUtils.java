@@ -1,153 +1,121 @@
 package com.nz.jnawintools.window.utils;
 
-
+import com.nz.jnawintools.win32.DEVMODEW;
 import com.nz.jnawintools.win32.Dwmapi;
-import com.nz.jnawintools.win32.User32Extended;
-import com.nz.jnawintools.window.structure.DEVMODE;
-import com.sun.jna.Native;
-import com.sun.jna.Pointer;
-import com.sun.jna.platform.win32.BaseTSD;
-import com.sun.jna.platform.win32.User32;
-import com.sun.jna.platform.win32.WinDef;
-import com.sun.jna.platform.win32.WinUser;
+import com.nz.jnawintools.win32.Foreign;
+import com.nz.jnawintools.win32.MONITORINFOEXW;
+import com.nz.jnawintools.win32.User32;
+import com.nz.jnawintools.win32.WinUser;
 
-import javax.swing.*;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+
+import static java.lang.foreign.ValueLayout.JAVA_INT;
 
 public class WindowMonitorUtils {
-    static final int DEVMODE_SIZE = 220;
-
-    private final static User32Extended USER_32_EXTENDED = User32Extended.INSTANCE;
-    static int ENUM_CURRENT_SETTINGS = -1;
-    static int ENUM_REGISTRY_SETTINGS = -2;
-
 
     public static boolean isDwmCompositionEnabled() {
-        WinDef.BOOLByReference pfEnabled = new WinDef.BOOLByReference();
-        int hr = Dwmapi.INSTANCE.DwmIsCompositionEnabled(pfEnabled);
-        if (hr == 0) {
-            return pfEnabled.getValue().booleanValue();
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment pfEnabled = arena.allocate(JAVA_INT);
+            int hr = Dwmapi.dwmIsCompositionEnabled(pfEnabled);
+            if (hr == 0) {
+                return pfEnabled.get(JAVA_INT, 0) != 0;
+            }
+            return false; // En cas d'erreur, on considere DWM desactive
         }
-        return false; // En cas d'erreur, on considère DWM désactivé
     }
 
-    public static boolean hasResolutionChangedForWindow(WinDef.HWND hwnd) {
-        WinUser.HMONITOR hMonitor = User32.INSTANCE.MonitorFromWindow(hwnd, User32.MONITOR_DEFAULTTONEAREST);
-        if (hMonitor == null) {
-            return false; // impossible de détecter
+    public static boolean hasResolutionChangedForWindow(long hwnd) {
+        long hMonitor = User32.monitorFromWindow(hwnd, WinUser.MONITOR_DEFAULTTONEAREST);
+        if (hMonitor == 0L) {
+            return false; // impossible de detecter
         }
         return hasResolutionChangedForMonitor(hMonitor);
     }
 
-    public static boolean hasResolutionChangedForMonitor(WinUser.HMONITOR hMonitor) {
-        // Récupère le moniteur de la fenêtre
+    public static boolean hasResolutionChangedForMonitor(long hMonitor) {
+        try (Arena arena = Arena.ofConfined()) {
+            // Recupere le nom du display (\\.\DISPLAYx)
+            MemorySegment info = MONITORINFOEXW.allocate(arena);
+            if (!User32.getMonitorInfo(hMonitor, info)) {
+                return false;
+            }
+            String displayName = MONITORINFOEXW.device(info);
 
-        // Récupère le nom du display (\\.\DISPLAYx)
-        User32.MONITORINFOEX info = new User32.MONITORINFOEX();
-        info.cbSize = info.size();
-        WinDef.BOOL bool = User32.INSTANCE.GetMonitorInfo(hMonitor, info);
-        if (bool == null || !bool.booleanValue())
-            return false;
+            // Prepare les structures DEVMODE
+            MemorySegment desktopMode = DEVMODEW.allocate(arena);
+            MemorySegment currentMode = DEVMODEW.allocate(arena);
 
-        String displayName = Native.toString(info.szDevice);
+            // Charge les resolutions
+            boolean gotDesktop = User32.enumDisplaySettings(arena, displayName,
+                    WinUser.ENUM_REGISTRY_SETTINGS, desktopMode);
+            boolean gotCurrent = User32.enumDisplaySettings(arena, displayName,
+                    WinUser.ENUM_CURRENT_SETTINGS, currentMode);
+            if (!gotDesktop || !gotCurrent) {
+                return false;
+            }
 
-        // Prépare les structures DEVMODE
-        DEVMODE desktopMode = new DEVMODE();
-        desktopMode.dmSize = (short) desktopMode.size();
-        DEVMODE currentMode = new DEVMODE();
-        currentMode.dmSize = (short) currentMode.size();
-
-        // Charge les résolutions
-        boolean gotDesktop = User32Extended.INSTANCE.EnumDisplaySettingsW(displayName, ENUM_REGISTRY_SETTINGS, desktopMode);
-        boolean gotCurrent = User32Extended.INSTANCE.EnumDisplaySettingsW(displayName, ENUM_CURRENT_SETTINGS, currentMode);
-        if (!gotDesktop || !gotCurrent) {
-            return false;
+            return DEVMODEW.pelsWidth(currentMode) != DEVMODEW.pelsWidth(desktopMode)
+                    || DEVMODEW.pelsHeight(currentMode) != DEVMODEW.pelsHeight(desktopMode)
+                    || DEVMODEW.displayFrequency(currentMode) != DEVMODEW.displayFrequency(desktopMode);
         }
-
-        return currentMode.dmPelsWidth != desktopMode.dmPelsWidth ||
-            currentMode.dmPelsHeight != desktopMode.dmPelsHeight ||
-            currentMode.dmDisplayFrequency != desktopMode.dmDisplayFrequency;
     }
-    public static boolean canStayOnTop(WinDef.HWND gameHwnd) {
-        // Crée une petite fenêtre
-        WinDef.HWND dummy = createTestWindow();
 
-        if (dummy == null) {
-            return false; // Impossible de créer
+    public static boolean canStayOnTop(long gameHwnd) {
+        // Cree une petite fenetre
+        long dummy = createTestWindow();
+
+        if (dummy == 0L) {
+            return false; // Impossible de creer
         }
 
         // Tente de la mettre en TOPMOST
-        boolean ok =  User32.INSTANCE.SetWindowPos(
-            dummy,
-            new WinDef.HWND(new Pointer(-1)), // HWND_TOPMOST
-            0, 0, 0, 0,
-            WinUser.SWP_NOMOVE | WinUser.SWP_NOSIZE | WinUser.SWP_NOACTIVATE| WinUser.SWP_SHOWWINDOW
+        User32.setWindowPos(
+                dummy,
+                WinUser.HWND_TOPMOST,
+                0, 0, 0, 0,
+                WinUser.SWP_NOMOVE | WinUser.SWP_NOSIZE | WinUser.SWP_NOACTIVATE | WinUser.SWP_SHOWWINDOW
         );
 
-        // Vérifie si le jeu reste au premier plan
-        WinDef.HWND foreground = User32.INSTANCE.GetForegroundWindow();
+        // Verifie si le jeu reste au premier plan
+        long foreground = User32.getForegroundWindow();
 
-        // Détruit la fenêtre après test
-        USER_32_EXTENDED.DestroyWindow(dummy);
+        // Detruit la fenetre apres test
+        User32.destroyWindow(dummy);
 
-        return !foreground.equals(gameHwnd);
-        // Si NOT foreground = notre fenêtre a réussi à passer par-dessus, donc PAS exclusif
+        // Si NOT foreground = notre fenetre a reussi a passer par-dessus, donc PAS exclusif
         // Si foreground = le jeu bloque tout = exclusif
-    }
-    public static WinDef.HWND createTestWindow() {
-        // Crée une petite fenêtre Swing invisible
-        JFrame frame = new JFrame();
-        frame.setSize(1, 1);
-        frame.setUndecorated(true); // pas de bordure
-        frame.setAlwaysOnTop(false); // on gère nous-mêmes
-        frame.setVisible(true); // doit être visible pour avoir un HWND
-
-        // Récupère le HWND natif
-        WinDef.HWND hwnd = new WinDef.HWND();
-        hwnd.setPointer(com.sun.jna.Native.getComponentPointer(frame));
-
-        return hwnd;
+        return foreground != gameHwnd;
     }
 
-    private static WinDef.HWND createDummyWindow() {
-        // HWND_MESSAGE = -3 → fenêtre "message only"
-        WinDef.HWND hwndMessageParent = new WinDef.HWND(Pointer.createConstant(-3));
+    /**
+     * Cree une petite fenetre native via {@code CreateWindowExW} en s'appuyant sur la classe
+     * systeme predefinie {@code STATIC} (aucune reflexion sun.awt, aucun composant Swing).
+     */
+    public static long createTestWindow() {
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment className = Foreign.wide(arena, "STATIC");
+            MemorySegment windowName = Foreign.wide(arena, "JnaWinToolsProbe");
+            return User32.createWindowEx(
+                    0,
+                    className,
+                    windowName,
+                    (int) WinUser.WS_POPUP,
+                    0, 0, 1, 1,
+                    0, 0, 0,
+                    MemorySegment.NULL);
+        }
+    }
 
-        // Crée une "fenêtre fantôme" directement (pas besoin de RegisterClassEx ici)
-        WinDef.HWND dummy = USER_32_EXTENDED.INSTANCE.CreateWindowExW(
-            0,
-            "Message",   // classe système existante
-            "DummyWindow",
-            WinUser.WS_POPUP,
-            0, 0, 1, 1,
-            hwndMessageParent, // parent message-only
-            null,
-            null,
-            null);
-
-        if (dummy == null) {
-            System.err.println("Impossible de créer la fenêtre message-only");
+    public static boolean isExclusiveFullscreenLight(long hwnd) {
+        // Si pas foreground -> pas exclusif
+        if (User32.getForegroundWindow() != hwnd) {
+            return false;
         }
 
-        // Crée la fenêtre
-        return dummy;
+        // Pas de decorations -> mode plein ecran
+        long style = User32.getWindowLongPtr(hwnd, WinUser.GWL_STYLE);
+        // on considere ca "fullscreen" (optimise)
+        return (style & WinUser.WS_OVERLAPPEDWINDOW) == 0;
     }
-
-    public static boolean isExclusiveFullscreenLight(WinDef.HWND hwnd) {
-        // Si pas foreground → pas exclusif
-        if (!User32.INSTANCE.GetForegroundWindow().equals(hwnd)) return false;
-
-        // Pas de décorations → mode plein écran
-        BaseTSD.LONG_PTR style = User32.INSTANCE.GetWindowLongPtr(hwnd, WinUser.GWL_STYLE);
-        if ((style.longValue() & WinUser.WS_OVERLAPPEDWINDOW) != 0) return false;
-
-        return true; // on considère ça "fullscreen" (optimisé)
-    }
-//    private static boolean isExclusiveFullscreenByStyle(WinDef.HWND hwnd) {
-//        BaseTSD.LONG_PTR exStyle = User32.INSTANCE.GetWindowLongPtr(hwnd, WinUser.GWL_EXSTYLE);
-//        int error = Kernel32.INSTANCE.GetLastError();
-//        if (exStyle.longValue() == 0 && error != 0) {
-//            return false; // impossible à lire, on considère non exclusif
-//        }
-//        return (exStyle.longValue() & WinUser.WS_EX_TOPMOST) != 0;
-//    }
 }

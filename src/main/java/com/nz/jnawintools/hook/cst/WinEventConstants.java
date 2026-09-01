@@ -23,6 +23,7 @@ public interface WinEventConstants {
     int EVENT_OBJECT_STATECHANGE     = 0x800A; // 32778
 
     int EVENT_OBJECT_LOCATIONCHANGE = 0x800B;  // 32779 (SOURIS BOUGE)
+    int EVENT_OBJECT_NAMECHANGE = 0x800C;
 
     int EVENT_SYSTEM_MOVESIZESTART = 0x000A; // 10  Début déplacement / redimensionnement fenêtre
     int EVENT_SYSTEM_MOVESIZEEND   = 0x000B; // 11  Fin déplacement / redimensionnement fenêtre

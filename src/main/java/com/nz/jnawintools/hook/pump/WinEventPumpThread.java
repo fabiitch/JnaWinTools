@@ -4,21 +4,31 @@ import com.nz.jnawintools.hook.cst.WinEventConstants;
 import com.nz.jnawintools.hook.event.CriticalWinEventQueue;
 import com.nz.jnawintools.hook.event.LocationChangeBuffer;
 import com.nz.jnawintools.hook.handler.WinEventRange;
-import com.sun.jna.Pointer;
-import com.sun.jna.platform.win32.Kernel32;
-import com.sun.jna.platform.win32.User32;
-import com.sun.jna.platform.win32.WinNT;
-import com.sun.jna.platform.win32.WinUser;
+import com.nz.jnawintools.win32.Kernel32;
+import com.nz.jnawintools.win32.MSG;
+import com.nz.jnawintools.win32.User32;
+import com.nz.jnawintools.win32.WinUser;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.ArrayList;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.nz.jnawintools.hook.cst.WinEventConstants.OBJID_WINDOW;
 
+/**
+ * Dedicated OS thread that owns the whole WinEvent lifecycle: {@code SetWinEventHook},
+ * {@code GetMessageW}, {@code DispatchMessageW} and {@code UnhookWinEvent} all run on this single
+ * thread, as required by the Win32 message pump model.
+ *
+ * <p>A single {@link User32.WinEventProc} upcall stub is created once and shared by all event
+ * ranges; it lives in an explicit {@link Arena} that is closed only after every
+ * {@code UnhookWinEvent} has completed. The {@code MSG} structure is allocated once, outside the
+ * loop, and reused for every message.
+ */
 @Slf4j
 public class WinEventPumpThread extends Thread {
 
@@ -29,8 +39,10 @@ public class WinEventPumpThread extends Thread {
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final CountDownLatch startedLatch = new CountDownLatch(1);
 
-    private final List<WinNT.HANDLE> hookHandles = new ArrayList<>();
-    private final List<WinUser.WinEventProc> callbacks = new ArrayList<>();
+    private final long[] hookHandles;
+
+    private Arena arena;
+    private MemorySegment upcallStub;
 
     private volatile int nativeThreadId;
     private volatile Throwable startupFailure;
@@ -46,102 +58,106 @@ public class WinEventPumpThread extends Thread {
         this.ranges = ranges;
         this.criticalQueue = criticalQueue;
         this.locationBuffer = locationBuffer;
+        this.hookHandles = new long[ranges.size()];
         setDaemon(true);
     }
 
     @Override
     public void run() {
-        nativeThreadId = Kernel32.INSTANCE.GetCurrentThreadId();
-        running.set(true);
-
+        boolean startupSignalled = false;
         try {
-            int rangeCount = ranges.size();
-            for (int i = 0; i < rangeCount; i++) {
+            nativeThreadId = Kernel32.getCurrentThreadId();
+            arena = Arena.ofConfined();
+            MemorySegment msg = MSG.allocate(arena);
+
+            // PeekMessage creates the native queue before startAndWait returns, eliminating the
+            // PostThreadMessage race when a caller starts and immediately stops the hook.
+            User32.peekMessage(msg, 0L, 0, 0, WinUser.PM_NOREMOVE);
+            upcallStub = User32.createWinEventUpcall(this::onWinEvent, arena);
+
+            for (int i = 0; i < ranges.size(); i++) {
                 WinEventRange range = ranges.get(i);
-
-                WinUser.WinEventProc proc = (hWinEventHook, event,
-                                             hwnd, idObject, idChild,
-                                             dwEventThread, dwmsEventTime) -> {
-                    try {
-                        int eventCode = event.intValue();
-                        if (eventCode == WinEventConstants.EVENT_OBJECT_LOCATIONCHANGE) {
-                            if (idObject.intValue() != OBJID_WINDOW || idChild.intValue() != 0) {
-                                return;
-                            }
-                            locationBuffer.publish(
-                                    eventCode,
-                                    hwnd,
-                                    idObject.intValue(),
-                                    idChild.intValue(),
-                                    dwEventThread.intValue(),
-                                    dwmsEventTime.intValue()
-                            );
-                        } else {
-                            criticalQueue.publish(
-                                    eventCode,
-                                    hwnd,
-                                    idObject.intValue(),
-                                    idChild.intValue(),
-                                    dwEventThread.intValue(),
-                                    dwmsEventTime.intValue()
-                            );
-                        }
-                        pump.signalWork();
-
-                    } catch (Throwable t) {
-                        log.error("[{}] callback failure", range.name(), t);
-                    }
-                };
-
-                WinNT.HANDLE handle = User32.INSTANCE.SetWinEventHook(
+                Kernel32.setLastError(0);
+                long handle = User32.setWinEventHook(
                         range.eventMin(),
                         range.eventMax(),
-                        null,
-                        proc,
+                        0L,
+                        upcallStub,
                         0,
                         0,
-                        range.flags()
-                );
+                        range.flags());
 
-                if (handle == null) {
+                if (handle == 0L) {
                     throw new IllegalStateException("SetWinEventHook failed for " + range.name()
-                            + " err=" + Kernel32.INSTANCE.GetLastError());
+                            + " err=" + Kernel32.getLastError());
                 }
 
-                callbacks.add(proc);
-                hookHandles.add(handle);
+                hookHandles[i] = handle;
 
                 if (log.isTraceEnabled()) {
                     log.trace("Installed hook [{}] handle=0x{} min={} max={} flags=0x{}",
                             range.name(),
-                            Long.toHexString(Pointer.nativeValue(handle.getPointer())),
+                            Long.toHexString(handle),
                             range.eventMin(),
                             range.eventMax(),
                             Integer.toHexString(range.flags()));
                 }
             }
 
-        } catch (Throwable t) {
-            startupFailure = t;
-            cleanup();
+            running.set(true);
+            startupSignalled = true;
             startedLatch.countDown();
-            return;
+
+            int result;
+            while ((result = User32.getMessage(msg, 0L, 0, 0)) > 0) {
+                User32.translateMessage(msg);
+                User32.dispatchMessage(msg);
+            }
+
+            if (result == -1) {
+                log.error("GetMessage failed. err={}", Kernel32.getLastError());
+            }
+        } catch (Throwable t) {
+            if (startupSignalled) {
+                log.error("WinEvent pump failed", t);
+            } else {
+                startupFailure = t;
+            }
+        } finally {
+            if (!startupSignalled) {
+                startedLatch.countDown();
+            }
+            cleanup();
+            running.set(false);
+            nativeThreadId = 0;
         }
+    }
 
-        startedLatch.countDown();
+    /**
+     * Native WinEvent callback. Runs on this pump thread. It must never allocate on the happy path
+     * and must never let an exception cross the native boundary.
+     */
+    private void onWinEvent(MemorySegment hWinEventHook, int event, MemorySegment hwnd,
+                            int idObject, int idChild, int idEventThread, int dwmsEventTime) {
+        try {
+            long handle = hwnd.address();
+            if (event == WinEventConstants.EVENT_OBJECT_LOCATIONCHANGE) {
+                if (idObject != OBJID_WINDOW || idChild != 0) {
+                    return;
+                }
+                locationBuffer.publish(event, handle, idObject, idChild, idEventThread, dwmsEventTime);
+            } else {
+                criticalQueue.publish(event, handle, idObject, idChild, idEventThread, dwmsEventTime);
+            }
 
-        WinUser.MSG msg = new WinUser.MSG();
-        int result;
-        while ((result = User32.INSTANCE.GetMessage(msg, null, 0, 0)) > 0) {
-            User32.INSTANCE.TranslateMessage(msg);
-            User32.INSTANCE.DispatchMessage(msg);
+            WinEventPump p = pump;
+            if (p != null) {
+                p.signalWork();
+            }
+        } catch (Throwable t) {
+            // Swallow: an exception must not propagate through the native callback frame.
+            log.error("WinEvent callback failure", t);
         }
-
-        if (result == -1) {
-            log.error("GetMessage failed. err={}", Kernel32.INSTANCE.GetLastError());
-        }
-
-        cleanup();
     }
 
     public void startAndWait() {
@@ -158,25 +174,52 @@ public class WinEventPumpThread extends Thread {
         }
     }
 
-    public void shutdown() {
-        if (!running.compareAndSet(true, false)) {
+    public synchronized void shutdown() {
+        if (!running.get()) {
             return;
         }
 
-        if (nativeThreadId != 0) {
-            User32.INSTANCE.PostThreadMessage(nativeThreadId, WinUser.WM_QUIT, null, null);
+        int threadId = nativeThreadId;
+        if (threadId == 0) {
+            throw new IllegalStateException("WinEvent pump has no native thread id");
         }
+
+        Kernel32.setLastError(0);
+        if (!User32.postThreadMessage(threadId, WinUser.WM_QUIT, 0L, 0L)) {
+            throw new IllegalStateException("PostThreadMessageW(WM_QUIT) failed, err="
+                    + Kernel32.getLastError());
+        }
+        running.set(false);
     }
 
     private void cleanup() {
-        for (WinNT.HANDLE handle : hookHandles) {
+        for (int i = 0; i < hookHandles.length; i++) {
+            long handle = hookHandles[i];
+            if (handle == 0L) {
+                continue;
+            }
             try {
-                User32.INSTANCE.UnhookWinEvent(handle);
+                Kernel32.setLastError(0);
+                if (!User32.unhookWinEvent(handle)) {
+                    log.error("UnhookWinEvent failed for handle=0x{}, err={}",
+                            Long.toHexString(handle), Kernel32.getLastError());
+                }
             } catch (Throwable t) {
                 log.error("UnhookWinEvent failed", t);
             }
+            hookHandles[i] = 0L;
         }
-        hookHandles.clear();
-        callbacks.clear();
+
+        // Close the arena only after every UnhookWinEvent has completed, so the shared upcall stub
+        // stays valid for as long as any hook could still fire.
+        if (arena != null) {
+            try {
+                arena.close();
+            } catch (Throwable t) {
+                log.error("Arena close failed", t);
+            }
+            arena = null;
+            upcallStub = null;
+        }
     }
 }

@@ -1,6 +1,5 @@
 package com.nz.jnawintools.hook.event;
 
-import com.sun.jna.platform.win32.WinDef;
 import lombok.Getter;
 import org.jctools.queues.SpscArrayQueue;
 
@@ -28,7 +27,7 @@ public final class CriticalWinEventQueue {
     }
 
     public void publish(int event,
-                        WinDef.HWND hwnd,
+                        long hwnd,
                         int idObject,
                         int idChild,
                         int eventThread,

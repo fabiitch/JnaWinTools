@@ -1,8 +1,17 @@
 package com.nz.jnawintools.hook.window;
 
-import com.sun.jna.platform.win32.WinDef;
-
 public interface WindowChecker {
-    boolean isWindow(WinDef.HWND hwnd);
-     String getWindowName();
+
+    /**
+     * @param hwnd the opaque window handle as a primitive {@code long} ({@code 0} = null)
+     */
+    boolean isWindow(long hwnd);
+
+    /**
+     * Invalidates any identity cache associated with {@code hwnd}.
+     */
+    default void invalidate(long hwnd) {
+    }
+
+    String getWindowName();
 }
