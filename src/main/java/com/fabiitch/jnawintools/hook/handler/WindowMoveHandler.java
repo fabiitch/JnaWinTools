@@ -1,0 +1,57 @@
+package com.fabiitch.jnawintools.hook.handler;
+
+import com.fabiitch.jnawintools.hook.event.RawWinEvent;
+import com.fabiitch.jnawintools.hook.event.WindowEventAction;
+import com.fabiitch.jnawintools.hook.event.dispatch.AbstractEventDispatcher;
+import com.fabiitch.jnawintools.hook.window.WindowChecker;
+import lombok.extern.slf4j.Slf4j;
+
+import static com.fabiitch.jnawintools.hook.cst.WinEventConstants.*;
+
+@Slf4j
+public class WindowMoveHandler extends BaseWindowEventHandler {
+
+    public WindowMoveHandler(WindowChecker windowToTrackChecker,
+                             AbstractEventDispatcher<WindowEventAction> dispatcher) {
+        super(windowToTrackChecker, dispatcher);
+    }
+
+    @Override
+    public String name() {
+        return "MoveHandler";
+    }
+
+    @Override
+    public boolean supports(RawWinEvent event) {
+        int eventId = event.getEvent();
+        return eventId == EVENT_OBJECT_LOCATIONCHANGE
+                || eventId == EVENT_SYSTEM_MINIMIZE_START
+                || eventId == EVENT_SYSTEM_MINIMIZE_END
+                || eventId == EVENT_SYSTEM_MOVESIZESTART
+                || eventId == EVENT_SYSTEM_MOVESIZEEND;
+    }
+
+    @Override
+    public void handle(RawWinEvent event) {
+        if (!event.isWindowObject()) {
+            if (log.isTraceEnabled()) {
+                log.trace("[{}] ignored event={} (idObject={}, idChild={})",
+                        name(), event.getEvent(), event.getIdObject(), event.getIdChild());
+            }
+
+            return;
+        }
+        if (!windowToTrackChecker.isWindow(event.getHwnd())) {
+            if (log.isTraceEnabled()) {
+                log.trace("[{}] ignored event={} for non tracked hwnd={}", name(), event.getEvent(), event.getHwnd());
+            }
+            return;
+        }
+
+        if (log.isTraceEnabled()) {
+            log.trace("[{}] dispatch action={} for hwnd={} event={}",
+                    name(), WindowEventAction.Move, event.getHwnd(), event.getEvent());
+        }
+        dispatch(WindowEventAction.Move);
+    }
+}
